@@ -55,7 +55,7 @@ export function buildSystem(req: ChatRequest): SystemBlocks {
       `Other nearby airports for context: ${AIRPORTS.filter((a) => a.id !== s.airportId).map((a) => `${a.id} ${a.name}`).join("; ")}.`,
       s.opensWith === "atc" && s.kickoff ? `You open the scenario. Your first in-character line must be: "${s.kickoff}"` : "The student makes the first call.",
     ].filter(Boolean).join("\n");
-    return { base: RADIO_BASE, context, pilot, maxTokens: 1024 };
+    return { base: RADIO_BASE, context, pilot, maxTokens: 4096 };
   }
 
   if (req.mode === "oral") {
@@ -63,11 +63,11 @@ export function buildSystem(req: ChatRequest): SystemBlocks {
     const context = a
       ? `AREA OF OPERATION: ${a.label} (ACS ${a.acs}). Topics to cover, in any order, going deeper as the student does well: ${a.seeds.join("; ")}. Airplane: Cessna 172S (180 hp, fuel injected, no carb heat; Vr 55, Vx 62, Vy 74, best glide 68, Va 105/98/90, Vfe 110/85, Vno 129, Vne 163, Vs1 48, Vs0 40 KCAS; 53 gal usable; 2,550 lb max gross). Local airspace: ${CHARLOTTE_BRAVO_NOTES.join(" ")} ${airportBlock("KJQF")}`
       : `Cover the whole ACS: ${ORAL_AREAS.map((x) => `${x.acs} ${x.label}`).join("; ")}. Move between areas naturally.`;
-    return { base: ORAL_BASE, context, pilot, maxTokens: 2048 };
+    return { base: ORAL_BASE, context, pilot, maxTokens: 4096 };
   }
 
   const items = COCKPIT_ITEMS.map((i) => `${i.name} [${i.zone}]: ${i.whatItIs}`).join("\n");
   const weak = req.weakTags?.length ? `WEAK AREAS to favour: ${req.weakTags.map((t) => CONCEPT_AREAS.find((a) => a.id === t)?.label ?? t).join(", ")}.` : "No weak-area data yet: mix evenly.";
   const context = `CONCEPT AREAS: ${CONCEPT_AREAS.map((a) => a.label).join("; ")}. ${weak}\nPHYSICAL ITEMS you can point at (describe by location, never say the name in the question):\n${items}\nAirplane numbers: Vr 55, Vx 62, Vy 74, best glide 68, Va 105 at 2,550 lb, Vfe 110/85, Vno 129, Vne 163, 53 gal usable, 180 hp IO-360, 28 V electrical, 13 fuel sumps.`;
-  return { base: POPQUIZ_BASE, context, pilot, maxTokens: 1024 };
+  return { base: POPQUIZ_BASE, context, pilot, maxTokens: 4096 };
 }

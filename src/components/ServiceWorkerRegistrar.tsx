@@ -16,6 +16,9 @@ export default function ServiceWorkerRegistrar() {
     navigator.serviceWorker
       .register("/sw.js", { scope: "/", updateViaCache: "none" })
       .catch((err) => console.error("sw registration failed", err));
+    // Ask the browser not to evict localStorage (logbook, deck progress).
+    // Safari otherwise clears site data after ~7 days without a visit.
+    navigator.storage?.persist?.().catch(() => {});
   }, []);
   return null;
 }

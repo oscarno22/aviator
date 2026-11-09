@@ -66,4 +66,4 @@ If no `ctl` line arrives for one second the device stops asserting and the keybo
 - `src/sim` — engine, aircraft model, loop, input/output bus, tasks, scoring
 - `src/lib` — storage, spaced repetition, speech, prompts, 61.109, METAR
 - `src/app/api/chat` — the only server-side Claude code
-- `public/sw.js` — service worker; `/precache.json` lists every static page
+- `src/sw/sw.template.js` — service worker, served at `/sw.js` with a per-deploy version stamped in by `src/app/sw.js/route.ts`; `/precache.json` lists every static page

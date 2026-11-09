@@ -4,7 +4,7 @@ import { ERROR_MARKER, MAX_MESSAGES, MAX_MESSAGE_CHARS, type ChatRequest } from 
 
 export const maxDuration = 60;
 
-const MODEL = "claude-opus-5";
+const MODEL = "claude-opus-5-5";
 
 function unauthorized() {
   return new Response("Passcode required. Set it in Settings.", { status: 401 });
