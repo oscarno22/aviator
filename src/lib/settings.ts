@@ -16,7 +16,7 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   homeAirport: "KCLT",
   trainingAirport: "KJQF",
-  runwayHeading: 20,
+  runwayHeading: 196,
   tailNumber: "N12345",
   voiceEnabled: true,
   speechRate: 1.0,

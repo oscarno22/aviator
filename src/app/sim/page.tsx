@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
-import PageHeader from "@/components/ui/PageHeader";
+import { Suspense } from "react";
+import SimApp from "@/components/sim/SimApp";
 
-export const metadata: Metadata = { title: "usim" };
+export const metadata: Metadata = { title: "Sim" };
 
-export default function Page() {
+export default function SimPage() {
   return (
-    <>
-      <PageHeader title="usim" subtitle="Coming in this build." />
-    </>
+    <Suspense>
+      <SimApp />
+    </Suspense>
   );
 }

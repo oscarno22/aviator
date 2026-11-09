@@ -1,12 +1,8 @@
 import type { Metadata } from "next";
-import PageHeader from "@/components/ui/PageHeader";
+import LogbookApp from "@/components/logbook/LogbookApp";
 
-export const metadata: Metadata = { title: "ulogbook" };
+export const metadata: Metadata = { title: "Logbook" };
 
-export default function Page() {
-  return (
-    <>
-      <PageHeader title="ulogbook" subtitle="Coming in this build." />
-    </>
-  );
+export default function LogbookPage() {
+  return <LogbookApp />;
 }

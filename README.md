@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Aviator
 
-## Getting Started
+A training companion for a Cessna 172S private pilot student in the Charlotte area. Built as an installable web app so it works on a phone in a hotel room and on an older MacBook.
 
-First, run the development server:
+| Area | What it does | Offline? |
+|---|---|---|
+| Checklists | 172S normal and emergency checklists, tap-to-check, memory-item quiz | yes |
+| Maneuvers | 24 ACS maneuver cards with entry, steps, callouts, tolerances, common errors, and a chair-fly mode that reads callouts aloud | yes |
+| Quiz | 247 instructor-style concept cards with spaced repetition, drill by area, 5-card pop quiz | yes |
+| Cockpit | Tappable 172S panel and walkaround with a "what is this?" spot quiz | yes |
+| Sim | Six-pack or G1000-style panel driven by a point-mass 172S model, 10 practice tasks graded to ACS tolerances, keyboard/gamepad/touch, WebSerial hook for hardware | yes |
+| Radio | Claude plays Concord Ground/Tower, Charlotte Approach, or Monroe CTAF traffic; an instructor grades each call | no |
+| Oral exam | Claude as a DPE by ACS area, or an instructor pop quiz | no |
+| Logbook | Entries and progress against 14 CFR 61.109(a) | yes |
+| Weather | METAR/TAF for KJQF and KCLT with the best runway and crosswind | cached |
+
+Everything is a training aid. Verify numbers against the POH, the school's checklist and the current ACS.
+
+## Run it
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local   # add ANTHROPIC_API_KEY and pick an APP_PASSCODE
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Radio and oral exam need the server env vars. The app sends the passcode from Settings as `x-app-key`; it must equal `APP_PASSCODE`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm test          # vitest: flight model, scoring, serial protocol, 61.109 math, METAR decode, SRS
+npm run lint
+npm run build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Install on a phone
 
-## Learn More
+Deploy to Vercel (set `ANTHROPIC_API_KEY` and `APP_PASSCODE` in the project settings), open the URL in Safari, Share → Add to Home Screen. The installed app keeps its own storage, separate from the Safari tab, so install once and stay in it. Use Settings → Export to move progress between devices.
 
-To learn more about Next.js, take a look at the following resources:
+## Sim controls
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Key | Action |
+|---|---|
+| ↑ / ↓ | push / pull |
+| ← / → | roll |
+| , / . | rudder |
+| W / S | throttle |
+| F / V | flaps down / up |
+| T / G | trim nose up / down |
+| P, R | pause, reset |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+A gamepad works after you press any button on it. On touch screens the on-screen stick, throttle and rudder appear automatically.
 
-## Deploy on Vercel
+## Hardware (WebSerial)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Chromium desktop only. Click "Connect serial" on the sim page. Newline-delimited JSON at 115200 baud, defined in `src/sim/io/protocol.ts` (with tests in `tests/protocol.test.ts`):
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Host → device, 10 Hz: `{"t":"state","v":1,"ias":98.2,"alt":3012,"hdg":274.5,"vs":-120,"pitch":1.3,"bank":-2.1,"tr":0,"ball":0.05,"rpm":2310,"flaps":0,"g":1.02,"horn":false,"stall":false,"paused":false}`
+- Device → host, any rate, partial allowed: `{"t":"ctl","v":1,"ele":-0.12,"ail":0.3,"rud":0,"thr":0.8,"flaps":10,"trim":0.1}`
+- Handshake: device sends `{"t":"hello","v":1,"name":"yoke-v1","caps":["ele","ail","thr"],"rate":20}`; host replies `{"t":"hello","v":1,"app":"aviator","rate":10}`.
+
+If no `ctl` line arrives for one second the device stops asserting and the keyboard or touch controls take over.
+
+## Layout
+
+- `src/data` — checklists, maneuvers, concept cards, cockpit items, airports, radio scenarios, oral topics
+- `src/sim` — engine, aircraft model, loop, input/output bus, tasks, scoring
+- `src/lib` — storage, spaced repetition, speech, prompts, 61.109, METAR
+- `src/app/api/chat` — the only server-side Claude code
+- `public/sw.js` — service worker; `/precache.json` lists every static page

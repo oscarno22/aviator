@@ -3,7 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { CONCEPTS, CONCEPT_AREAS, type ConceptArea, type ConceptCard } from "@/data/concepts";
-import { srsKey, buildReviewQueue, dueCount, shuffle } from "@/lib/srsStore";
+import { srsKey, customCardsKey, buildReviewQueue, dueCount, shuffle } from "@/lib/srsStore";
 import { useStored } from "@/lib/useStored";
 import PageHeader from "@/components/ui/PageHeader";
 import { Card, CardTitle } from "@/components/ui/Card";
@@ -16,15 +16,17 @@ type Mode = "review" | "area" | "pop";
 export default function QuizApp() {
   const params = useSearchParams();
   const [all] = useStored(srsKey);
+  const [custom] = useStored(customCardsKey);
+  const deck = useMemo(() => [...CONCEPTS, ...custom], [custom]);
   // Deep link: /quiz?mode=pop from the dashboard starts a pop quiz immediately.
   const [session, setSession] = useState<{ mode: Mode; cards: ConceptCard[]; title: string } | null>(() =>
     params.get("mode") === "pop" ? { mode: "pop", cards: shuffle(CONCEPTS).slice(0, 5), title: "Pop quiz" } : null
   );
   const [area, setArea] = useState<ConceptArea>("airspace");
-  const stats = useMemo(() => dueCount(all), [all]);
+  const stats = useMemo(() => dueCount(all, deck), [all, deck]);
   const perArea = useMemo(() => Object.fromEntries(CONCEPT_AREAS.map((a) => [a.id, dueCount(all, CONCEPTS.filter((c) => c.area === a.id))])), [all]);
 
-  const startReview = () => setSession({ mode: "review", cards: buildReviewQueue(all), title: "Review" });
+  const startReview = () => setSession({ mode: "review", cards: buildReviewQueue(all, deck), title: "Review" });
   const startPop = () => setSession({ mode: "pop", cards: shuffle(CONCEPTS).slice(0, 5), title: "Pop quiz" });
   const startArea = (a: ConceptArea) => setSession({ mode: "area", cards: shuffle(CONCEPTS.filter((c) => c.area === a)), title: CONCEPT_AREAS.find((x) => x.id === a)!.label });
 
@@ -69,6 +71,12 @@ export default function QuizApp() {
             );
           })}
         </ul>
+        {custom.length > 0 && (
+          <button className="mt-2 flex w-full items-center justify-between border-t border-border py-2.5 text-left hover:text-amber" onClick={() => setSession({ mode: "area", cards: shuffle(custom), title: "Saved from pop quizzes" })}>
+            <span><span className="block text-sm">Saved from pop quizzes</span><span className="block text-xs text-muted">{custom.length} cards</span></span>
+            <Icon name="chevron" size={16} className="text-muted" />
+          </button>
+        )}
         <p className="mt-3 text-xs text-muted">Currently focused on: {CONCEPT_AREAS.find((a) => a.id === area)?.label}. Grades in a drill still feed the review schedule.</p>
       </Card>
     </>

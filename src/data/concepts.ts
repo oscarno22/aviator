@@ -5,7 +5,7 @@
  */
 export type ConceptArea =
   | "airspace" | "weather" | "regs" | "systems" | "aero" | "performance"
-  | "airport" | "emergency" | "aeromedical" | "navigation";
+  | "airport" | "emergency" | "aeromedical" | "navigation" | "custom";
 
 export interface ConceptCard {
   id: string;

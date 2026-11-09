@@ -49,7 +49,7 @@ export default function SettingsForm() {
             <Field label="Home airport (ICAO)" hint="Nearest big METAR station.">
               <input className={INPUT} value={s.homeAirport} onChange={(e) => patch({ homeAirport: e.target.value.toUpperCase().slice(0, 4) })} />
             </Field>
-            <Field label="Runway heading (°)" hint="For the crosswind component on the weather card.">
+            <Field label="Runway heading (°)" hint="Only used if the training airport isn't one the app knows (KJQF, KEQY, KCLT pick the best runway automatically).">
               <input className={INPUT} type="number" min={0} max={360} value={s.runwayHeading} onChange={(e) => patch({ runwayHeading: Number(e.target.value) })} />
             </Field>
           </div>

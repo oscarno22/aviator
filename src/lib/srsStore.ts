@@ -51,3 +51,6 @@ export function shuffle<T>(arr: T[], seed = Math.random()): T[] {
   }
   return a;
 }
+
+/** Cards the student saved from a pop quiz ("add to review deck"). */
+export const customCardsKey = defineKey<ConceptCard[]>("custom-cards", 1, []);

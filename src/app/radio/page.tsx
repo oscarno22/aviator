@@ -1,12 +1,8 @@
 import type { Metadata } from "next";
-import PageHeader from "@/components/ui/PageHeader";
+import RadioApp from "@/components/chat/RadioApp";
 
-export const metadata: Metadata = { title: "uradio" };
+export const metadata: Metadata = { title: "Radio" };
 
-export default function Page() {
-  return (
-    <>
-      <PageHeader title="uradio" subtitle="Coming in this build." />
-    </>
-  );
+export default function RadioPage() {
+  return <RadioApp />;
 }

@@ -63,7 +63,7 @@ export default function CardDeck({ title, cards, mode, onExit }: { title: string
     );
   }
 
-  const areaLabel = CONCEPT_AREAS.find((a) => a.id === card.area)?.label ?? card.area;
+  const areaLabel = CONCEPT_AREAS.find((a) => a.id === card.area)?.label ?? (card.area === "custom" ? "Saved from a pop quiz" : card.area);
 
   return (
     <div className="flex min-h-[70dvh] flex-col">

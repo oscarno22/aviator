@@ -1,12 +1,8 @@
 import type { Metadata } from "next";
-import PageHeader from "@/components/ui/PageHeader";
+import WeatherApp from "@/components/weather/WeatherApp";
 
-export const metadata: Metadata = { title: "uweather" };
+export const metadata: Metadata = { title: "Weather" };
 
-export default function Page() {
-  return (
-    <>
-      <PageHeader title="uweather" subtitle="Coming in this build." />
-    </>
-  );
+export default function WeatherPage() {
+  return <WeatherApp />;
 }

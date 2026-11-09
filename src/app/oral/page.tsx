@@ -1,12 +1,8 @@
 import type { Metadata } from "next";
-import PageHeader from "@/components/ui/PageHeader";
+import OralApp from "@/components/chat/OralApp";
 
-export const metadata: Metadata = { title: "uoral" };
+export const metadata: Metadata = { title: "Oral exam" };
 
-export default function Page() {
-  return (
-    <>
-      <PageHeader title="uoral" subtitle="Coming in this build." />
-    </>
-  );
+export default function OralPage() {
+  return <OralApp />;
 }
