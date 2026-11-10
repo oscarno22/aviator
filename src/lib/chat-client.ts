@@ -1,10 +1,11 @@
-import { COACH_MARKER, ERROR_MARKER, type ChatRequest } from "./chat-types";
+import { AI_ERROR_HEADER, COACH_MARKER, ERROR_MARKER, type AiFailKind, type ChatRequest } from "./chat-types";
 
 export interface StreamHandlers {
   onSpeech: (text: string) => void;    // accumulated in-character text so far
   onCoach: (text: string) => void;     // accumulated coach note so far (after the marker)
   onDone: (speech: string, coach: string) => void;
-  onError: (message: string) => void;
+  /** `gotText` is false when the failure happened before any reply text arrived. */
+  onError: (message: string, kind: AiFailKind, gotText: boolean) => void;
 }
 
 export interface ChatClientOptions { passcode: string; signal?: AbortSignal }
@@ -21,12 +22,14 @@ export async function streamChat(req: ChatRequest, opts: ChatClientOptions, h: S
     });
   } catch (e) {
     if ((e as Error).name === "AbortError") return;
-    h.onError("Couldn't reach the server. Are you online?");
+    h.onError("Couldn't reach the server. Are you online?", "offline", false);
     return;
   }
   if (!res.ok || !res.body) {
     const msg = await res.text().catch(() => "");
-    h.onError(res.status === 401 ? "Passcode rejected. Set it in Settings." : msg || `Server error ${res.status}`);
+    const code = res.headers.get(AI_ERROR_HEADER) as AiFailKind | null;
+    const kind: AiFailKind = code ?? (res.status === 401 ? "passcode" : res.status === 429 ? "rate" : res.status === 400 ? "bad-request" : "upstream");
+    h.onError(res.status === 401 ? "Passcode rejected. Set it in Settings." : msg || `Server error ${res.status}`, kind, false);
     return;
   }
   const reader = res.body.getReader();
@@ -52,10 +55,10 @@ export async function streamChat(req: ChatRequest, opts: ChatClientOptions, h: S
     }
   } catch (e) {
     if ((e as Error).name === "AbortError") return;
-    h.onError("The stream was interrupted.");
+    h.onError("The stream was interrupted.", "stream", split().speech.length > 0);
     return;
   }
   const { speech, coach, error } = split();
-  if (error) { h.onError(error); }
+  if (error) { h.onError(error, "stream", speech.length > 0); }
   h.onDone(speech, coach);
 }

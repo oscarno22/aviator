@@ -84,6 +84,13 @@ export default function SettingsForm() {
 
         <Card>
           <CardTitle>Radio & oral exam access</CardTitle>
+          <label className="flex items-center justify-between gap-3 py-1.5">
+            <span>
+              Use Claude when available
+              <span className="block text-xs text-muted">Off: Radio and Oral always use the built-in drills, which work offline and cost nothing.</span>
+            </span>
+            <input type="checkbox" className="h-5 w-5 shrink-0 accent-accent" checked={s.aiMode !== "off"} onChange={(e) => patch({ aiMode: e.target.checked ? "auto" : "off" })} />
+          </label>
           <Field label="Passcode" hint="Must match APP_PASSCODE on the server. Keeps strangers from using the API key.">
             <input className={INPUT} type="password" autoComplete="off" value={s.passcode} onChange={(e) => patch({ passcode: e.target.value })} />
           </Field>

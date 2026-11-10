@@ -9,14 +9,14 @@ import { useStored } from "@/lib/useStored";
 import Button from "@/components/ui/Button";
 import Icon from "@/components/Icon";
 
-const GRADES: { g: Grade; label: string; hint: string; cls: string }[] = [
+export const GRADES: { g: Grade; label: string; hint: string; cls: string }[] = [
   { g: "again", label: "Again", hint: "blanked", cls: "border-danger/40 text-danger" },
   { g: "hard", label: "Hard", hint: "shaky", cls: "border-warn/40 text-warn" },
   { g: "good", label: "Good", hint: "got it", cls: "border-ok/40 text-ok" },
   { g: "easy", label: "Easy", hint: "instant", cls: "border-sky/40 text-sky" },
 ];
 
-export default function CardDeck({ title, cards, mode, onExit }: { title: string; cards: ConceptCard[]; mode: "review" | "area" | "pop"; onExit: () => void }) {
+export default function CardDeck({ title, cards, mode, onExit, exitLabel = "Back to quiz" }: { title: string; cards: ConceptCard[]; mode: "review" | "area" | "pop"; onExit: () => void; exitLabel?: string }) {
   const [, setAll] = useStored(srsKey);
   const [queue, setQueue] = useState<ConceptCard[]>(cards);
   const [flipped, setFlipped] = useState(false);
@@ -58,7 +58,7 @@ export default function CardDeck({ title, cards, mode, onExit }: { title: string
         <div className="mt-4 flex gap-4 text-sm">
           {GRADES.map((x) => <span key={x.g} className={x.cls.split(" ")[1]}>{x.label} {done[x.g]}</span>)}
         </div>
-        <Button variant="primary" className="mt-8" onClick={onExit}>Back to quiz</Button>
+        <Button variant="primary" className="mt-8" onClick={onExit}>{exitLabel}</Button>
       </div>
     );
   }

@@ -11,6 +11,7 @@ export interface Settings {
   panelStyle: "sixpack" | "pfd";
   turbulence: boolean;
   callsignSpoken: string;   // "Skyhawk one two three four five"
+  aiMode: "auto" | "off";   // "off": Radio and Oral always use the scripted drills
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -24,9 +25,10 @@ export const DEFAULT_SETTINGS: Settings = {
   panelStyle: "sixpack",
   turbulence: false,
   callsignSpoken: "Skyhawk one two three four five",
+  aiMode: "auto",
 };
 
-export const settingsKey = defineKey<Settings>("settings", 1, DEFAULT_SETTINGS, (old) => ({
+export const settingsKey = defineKey<Settings>("settings", 2, DEFAULT_SETTINGS, (old) => ({
   ...DEFAULT_SETTINGS,
   ...(old as Partial<Settings>),
 }));

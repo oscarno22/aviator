@@ -7,41 +7,41 @@ import type { ChatMode } from "@/lib/chat-types";
 import { settingsKey } from "@/lib/settings";
 import { srsKey, customCardsKey, weakTags } from "@/lib/srsStore";
 import { useStored, useHydrated } from "@/lib/useStored";
-import { createRecognizer, speak, stopSpeaking, sttSupported, ttsSupported, unlockSpeech, type Recognizer } from "@/lib/speech";
+import { speak, stopSpeaking, ttsSupported } from "@/lib/speech";
+import type { AiFailKind } from "@/lib/chat-types";
+import Composer from "./Composer";
+import OptionPicker, { type ChatOption } from "./OptionPicker";
 import { uid } from "@/lib/storage";
-import Button from "@/components/ui/Button";
-import Icon from "@/components/Icon";
 
-export interface ChatOption {
-  id: string;
-  label: string;
-  summary: string;
-  briefing: string[];       // shown in the drawer
-  frequency?: string;       // radio: "Concord Ground 121.85"
-  opensWith?: "pilot" | "atc";
-}
+export type { ChatOption } from "./OptionPicker";
 
 interface Turn { id: string; role: "user" | "assistant"; text: string; coach?: string; error?: string; done: boolean }
 
-export default function ChatPanel({ mode, options, selected, onSelect, placeholder, sendLabel }:
-  { mode: ChatMode; options: ChatOption[]; selected: string | null; onSelect: (id: string | null) => void; placeholder: string; sendLabel: string }) {
+export default function ChatPanel({ mode, options, selected, onSelect, placeholder, sendLabel, onFail, onOk, onSwitch }:
+  {
+    mode: ChatMode; options: ChatOption[]; selected: string | null; onSelect: (id: string | null) => void; placeholder: string; sendLabel: string;
+    /** Called on every failed reply. `firstCall` is the student's text when nothing had been answered yet. */
+    onFail?: (kind: AiFailKind, gotText: boolean, firstCall: string | null) => void;
+    onOk?: () => void;
+    /** Offered next to an error that did not switch modes by itself. */
+    onSwitch?: () => void;
+  }) {
   const hydrated = useHydrated();
   const [settings] = useStored(settingsKey);
   const [srs] = useStored(srsKey);
   const [, setCustom] = useStored(customCardsKey);
   const [turns, setTurns] = useState<Turn[]>([]);
-  const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
-  const [interim, setInterim] = useState<string | null>(null);
   const [showBrief, setShowBrief] = useState(true);
+  // Separate from turns.length: when the pilot speaks first, Start leaves the transcript empty.
+  const [started, setStarted] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
-  const recRef = useRef<Recognizer | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const option = options.find((o) => o.id === selected) ?? null;
   const voice = settings.voiceEnabled && hydrated && ttsSupported();
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ block: "end" }); }, [turns.length, interim]);
-  useEffect(() => () => { abortRef.current?.abort(); stopSpeaking(); recRef.current?.abort(); }, []);
+  useEffect(() => { bottomRef.current?.scrollIntoView({ block: "end" }); }, [turns.length]);
+  useEffect(() => () => { abortRef.current?.abort(); stopSpeaking(); }, []);
 
   const pilot = { tailNumber: settings.tailNumber, callsign: settings.callsignSpoken, trainingAirport: settings.trainingAirport, homeAirport: settings.homeAirport };
 
@@ -53,7 +53,6 @@ export default function ChatPanel({ mode, options, selected, onSelect, placehold
     const assistant: Turn = { id: uid(), role: "assistant", text: "", done: false };
     const next = [...history, ...userTurn, assistant];
     setTurns(next);
-    setInput("");
     setStreaming(true);
     const ctl = new AbortController();
     abortRef.current = ctl;
@@ -65,8 +64,12 @@ export default function ChatPanel({ mode, options, selected, onSelect, placehold
       {
         onSpeech: (s) => patch({ text: s }),
         onCoach: (c) => patch({ coach: c }),
-        onDone: (s, c) => { patch({ text: s, coach: c || undefined, done: true }); setStreaming(false); if (voice && s) speak(s, { rate: settings.speechRate }); },
-        onError: (m) => { patch({ error: m, done: true }); setStreaming(false); },
+        onDone: (s, c) => { patch({ text: s, coach: c || undefined, done: true }); setStreaming(false); if (s) onOk?.(); if (voice && s) speak(s, { rate: settings.speechRate }); },
+        onError: (m, kind, gotText) => {
+          patch({ error: m, done: true });
+          setStreaming(false);
+          onFail?.(kind, gotText, history.some((t) => t.role === "assistant" && t.text) ? null : clean || null);
+        },
       }
     );
   };
@@ -74,24 +77,9 @@ export default function ChatPanel({ mode, options, selected, onSelect, placehold
   const start = () => {
     setTurns([]);
     setShowBrief(false);
+    setStarted(true);
     if (option?.opensWith === "atc" || mode === "popquiz" || mode === "oral") send("", []);
   };
-
-  const pttDown = () => {
-    if (streaming) return;
-    unlockSpeech();
-    const rec = createRecognizer({
-      onInterim: (t) => setInterim(t),
-      onFinal: (t) => { setInterim(null); send(t); },
-      onError: () => setInterim(null),
-      onEnd: () => setInterim((v) => (v ? v : null)),
-    });
-    if (!rec) return;
-    recRef.current = rec;
-    setInterim("");
-    rec.start();
-  };
-  const pttUp = () => { recRef.current?.stop(); };
 
   const saveCard = (t: Turn, idx: number) => {
     const question = turns.slice(0, idx).reverse().find((x) => x.role === "assistant")?.text ?? "";
@@ -101,23 +89,8 @@ export default function ChatPanel({ mode, options, selected, onSelect, placehold
 
   return (
     <div className="flex min-h-[70dvh] flex-col">
-      {/* picker + briefing */}
-      <div className="mb-3 rounded-xl border border-border bg-surface">
-        <div className="flex items-center gap-2 p-2">
-          <select className="min-w-0 flex-1 rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm" value={selected ?? ""} onChange={(e) => { onSelect(e.target.value || null); setTurns([]); setShowBrief(true); }}>
-            {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-          </select>
-          <Button variant="ghost" className="h-9 px-2 text-xs" onClick={() => setShowBrief((v) => !v)} aria-expanded={showBrief}>{showBrief ? "Hide" : "Brief"}</Button>
-          <Button variant="primary" className="h-9" onClick={start} disabled={streaming}>{turns.length ? "Restart" : "Start"}</Button>
-        </div>
-        {showBrief && option && (
-          <div className="border-t border-border p-3 text-sm">
-            {option.frequency && <p className="mb-1 font-mono text-xs text-accent">{option.frequency}</p>}
-            <p className="text-fg/90">{option.summary}</p>
-            <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-muted">{option.briefing.map((b) => <li key={b}>{b}</li>)}</ul>
-          </div>
-        )}
-      </div>
+      <OptionPicker options={options} selected={selected} onSelect={(id) => { onSelect(id); setTurns([]); setShowBrief(true); setStarted(false); }}
+        showBrief={showBrief} onToggleBrief={() => setShowBrief((v) => !v)} onStart={start} started={started} disabled={streaming} />
 
       {hydrated && !settings.passcode && (
         <p className="mb-3 rounded-lg border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-warn">
@@ -127,7 +100,7 @@ export default function ChatPanel({ mode, options, selected, onSelect, placehold
 
       {/* transcript */}
       <div className="flex-1 space-y-3 overflow-y-auto pb-2">
-        {turns.length === 0 && <p className="py-8 text-center text-sm text-muted">{mode === "radio" && option?.opensWith !== "atc" ? "Press Start, then make your first call." : "Press Start."}</p>}
+        {turns.length === 0 && <p className="py-8 text-center text-sm text-muted">{started ? "Make your first call." : mode === "radio" && option?.opensWith !== "atc" ? "Press Start, then make your first call." : "Press Start."}</p>}
         {turns.map((t, i) => (
           <div key={t.id} className={t.role === "user" ? "flex justify-end" : ""}>
             {t.role === "user" ? (
@@ -151,29 +124,20 @@ export default function ChatPanel({ mode, options, selected, onSelect, placehold
                     )}
                   </div>
                 )}
-                {t.error && <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">{t.error}</p>}
+                {t.error && (
+                  <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
+                    {t.error}
+                    {onSwitch && <button className="ml-2 underline" onClick={onSwitch}>Switch to the scripted version</button>}
+                  </p>
+                )}
               </div>
             )}
           </div>
         ))}
-        {interim !== null && <p className="text-right text-xs italic text-muted">{interim || "listening…"}</p>}
         <div ref={bottomRef} />
       </div>
 
-      {/* composer */}
-      <form className="mt-2 flex items-end gap-2" onSubmit={(e) => { e.preventDefault(); send(input); }}>
-        {hydrated && sttSupported() && (
-          <button type="button" className={`h-11 w-11 shrink-0 rounded-full border ${interim !== null ? "border-danger bg-danger/20 text-danger" : "border-border bg-surface-2 text-muted"}`}
-            onPointerDown={pttDown} onPointerUp={pttUp} onPointerCancel={pttUp} onPointerLeave={pttUp} aria-label="Hold to talk" disabled={streaming}>
-            <Icon name="mic" className="mx-auto" />
-          </button>
-        )}
-        <textarea className="min-h-11 flex-1 resize-none rounded-xl border border-border bg-surface-2 px-3 py-2.5 text-sm outline-none focus:border-accent" rows={1}
-          placeholder={placeholder} value={input} onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }} disabled={streaming || turns.length === 0} />
-        <Button type="submit" variant="primary" className="h-11" disabled={streaming || !input.trim() || turns.length === 0}>{sendLabel}</Button>
-      </form>
-      <p className="mt-1 text-[11px] text-muted">{hydrated && sttSupported() ? "Hold the mic to talk, release to send. " : ""}Enter sends; Shift+Enter for a new line.</p>
+      <Composer placeholder={placeholder} sendLabel={sendLabel} disabled={streaming || !started} onSend={(t) => send(t)} />
     </div>
   );
 }

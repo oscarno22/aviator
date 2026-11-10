@@ -1,13 +1,25 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { buildSystem } from "@/lib/prompts";
-import { ERROR_MARKER, MAX_MESSAGES, MAX_MESSAGE_CHARS, type ChatRequest } from "@/lib/chat-types";
+import { AI_ERROR_HEADER, ERROR_MARKER, MAX_MESSAGES, MAX_MESSAGE_CHARS, type AiErrorCode, type ChatRequest } from "@/lib/chat-types";
 
 export const maxDuration = 60;
 
 const MODEL = "claude-opus-5-5";
 
+/** Every failure carries a machine-readable reason so the client can decide whether to fall back to scripted drills. */
+function fail(message: string, status: number, code: AiErrorCode) {
+  return new Response(message, { status, headers: { [AI_ERROR_HEADER]: code } });
+}
+
 function unauthorized() {
-  return new Response("Passcode required. Set it in Settings.", { status: 401 });
+  return fail("Passcode required. Set it in Settings.", 401, "passcode");
+}
+
+function isBilling(err: InstanceType<typeof Anthropic.APIError>): boolean {
+  if (err.status === 402 || err.type === "billing_error") return true;
+  // Observed 2026-11-09: an account with no credit answers 400 invalid_request_error,
+  // distinguishable only by its message. Either way the client falls back; this just labels it.
+  return err.status === 400 && /credit balance/i.test(err.message);
 }
 
 function validate(body: unknown): ChatRequest | string {
@@ -52,13 +64,13 @@ function normalize(messages: ChatRequest["messages"]): Anthropic.MessageParam[] 
 
 export async function POST(request: Request) {
   const expected = process.env.APP_PASSCODE;
-  if (!expected) return new Response("Server is missing APP_PASSCODE.", { status: 500 });
+  if (!expected) return fail("Server is missing APP_PASSCODE.", 500, "config");
   if (request.headers.get("x-app-key") !== expected) return unauthorized();
 
   let body: unknown;
-  try { body = await request.json(); } catch { return new Response("Invalid JSON", { status: 400 }); }
+  try { body = await request.json(); } catch { return fail("Invalid JSON", 400, "bad-request"); }
   const req = validate(body);
-  if (typeof req === "string") return new Response(req, { status: 400 });
+  if (typeof req === "string") return fail(req, 400, "bad-request");
 
   const sys = buildSystem(req);
   const client = new Anthropic();
@@ -80,10 +92,12 @@ export async function POST(request: Request) {
   try {
     first = await iterator.next();
   } catch (err) {
-    if (err instanceof Anthropic.AuthenticationError) return new Response("The server's Anthropic API key was rejected.", { status: 500 });
-    if (err instanceof Anthropic.RateLimitError) return new Response("Rate limited by the API. Try again in a minute.", { status: 429 });
-    if (err instanceof Anthropic.APIError) return new Response(`API error ${err.status ?? ""}: ${err.message}`, { status: 502 });
-    return new Response("Could not reach the API.", { status: 502 });
+    if (err instanceof Anthropic.AuthenticationError) return fail("The server's Anthropic API key was rejected.", 500, "auth");
+    if (err instanceof Anthropic.PermissionDeniedError) return fail("The server's Anthropic API key is not allowed to do this.", 500, "auth");
+    if (err instanceof Anthropic.RateLimitError) return fail("Rate limited by the API. Try again in a minute.", 429, "rate");
+    if (err instanceof Anthropic.APIError && isBilling(err)) return fail("The Anthropic account has no credit.", 402, "billing");
+    if (err instanceof Anthropic.APIError) return fail(`API error ${err.status ?? ""}: ${err.message}`, 502, "upstream");
+    return fail("Could not reach the API.", 502, "config");
   }
 
   const enc = new TextEncoder();
