@@ -9,12 +9,16 @@ A training companion for a Cessna 172S private pilot student in the Charlotte ar
 | Quiz | 247 instructor-style concept cards with spaced repetition, drill by area, 5-card pop quiz | yes |
 | Cockpit | Tappable 172S panel and walkaround with a "what is this?" spot quiz | yes |
 | Sim | Six-pack or G1000-style panel driven by a point-mass 172S model, 10 practice tasks graded to ACS tolerances, keyboard/gamepad/touch, WebSerial hook for hardware | yes |
-| Radio | Claude plays Concord Ground/Tower, Charlotte Approach, or Monroe CTAF traffic; an instructor grades each call | no |
-| Oral exam | Claude as a DPE by ACS area, or an instructor pop quiz | no |
+| Radio | Six scenarios. With Claude: a live controller and an instructor's note on each call. Without: a scripted exchange that checks each call for its required parts and shows the model call | yes (scripted) |
+| Oral exam | With Claude: a DPE by ACS area, or an instructor pop quiz. Without: a self-graded bank of 74 questions with model answers and references | yes (bank) |
+| Debrief | One-minute post-lesson form: what was flown, what went badly, what the instructor said | yes |
+| Review | One queue of everything due or weak (cards, oral questions, radio drills, sim tasks, debrief items) and a 12-minute pre-lesson warm-up | yes |
 | Logbook | Entries and progress against 14 CFR 61.109(a) | yes |
 | Weather | METAR/TAF for KJQF and KCLT with the best runway and crosswind | cached |
 
-Everything is a training aid. Verify numbers against the POH, the school's checklist and the current ACS.
+Everything is a training aid. Verify numbers against the POH, the school's checklist and the current ACS. The scripted radio phraseology (`src/data/radioScripts.ts`) and the oral answers (`src/data/oralBank.ts`) have not been checked by an instructor yet.
+
+Radio and Oral use Claude only when it answers. If the call fails (no credit, offline, no passcode) they switch to the built-in versions for 24 hours; "Try Claude" switches back, and Settings has a toggle to keep Claude off.
 
 ## Run it
 
