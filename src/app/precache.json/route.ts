@@ -9,7 +9,7 @@ export function GET() {
     "/", "/offline", "/more", "/settings",
     "/checklists", ...CHECKLISTS.map((c) => `/checklists/${c.id}`),
     "/maneuvers", ...MANEUVERS.map((m) => `/maneuvers/${m.id}`),
-    "/quiz", "/cockpit", "/sim", "/logbook", "/weather", "/radio", "/oral",
+    "/quiz", "/cockpit", "/sim", "/logbook", "/weather", "/radio", "/oral", "/review", "/debrief",
     "/icons/icon-192.png", "/icons/icon-512.png", "/icons/apple-touch-icon.png",
   ];
   return Response.json({ urls }, { headers: { "Cache-Control": "no-cache" } });

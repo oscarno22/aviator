@@ -7,6 +7,8 @@ export const NAV: NavItem[] = [
   { href: "/checklists", label: "Checklists", icon: "list" },
   { href: "/maneuvers", label: "Maneuvers", icon: "plane" },
   { href: "/sim", label: "Sim", icon: "gauge" },
+  { href: "/review", label: "Review", icon: "reset" },
+  { href: "/debrief", label: "Debrief", icon: "check" },
   { href: "/quiz", label: "Quiz", icon: "cards" },
   { href: "/cockpit", label: "Cockpit", icon: "cockpit" },
   { href: "/radio", label: "Radio", icon: "radio" },

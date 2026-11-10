@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { EMPTY_ENTRY, logbookKey, requirements, totals, type LogbookEntry } from "@/lib/far61";
 import { todayStr } from "@/lib/srs";
@@ -16,12 +17,14 @@ export default function LogbookApp() {
   const [entries, setEntries] = useStored(logbookKey);
   const [editing, setEditing] = useState<LogbookEntry | null>(null);
   const [adding, setAdding] = useState<"flight" | "carryforward" | null>(null);
+  const [justLogged, setJustLogged] = useState<string | null>(null); // date of the flight just added
   const reqs = useMemo(() => requirements(entries), [entries]);
   const t = useMemo(() => totals(entries), [entries]);
   const sorted = useMemo(() => [...entries].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)), [entries]);
   const done = reqs.filter((r) => r.value >= r.required).length;
 
   const save = (entry: LogbookEntry) => {
+    setJustLogged(entry.kind === "flight" && !entries.some((e) => e.id === entry.id) ? entry.date : null);
     setEntries((prev) => (prev.some((e) => e.id === entry.id) ? prev.map((e) => (e.id === entry.id ? entry : e)) : [...prev, entry]));
     setEditing(null); setAdding(null);
   };
@@ -39,6 +42,12 @@ export default function LogbookApp() {
       {(adding || editing) && (
         <EntryForm initial={editing ?? { ...EMPTY_ENTRY, id: uid(), date: todayStr(), kind: adding ?? "flight", flags: {} }}
           onSave={save} onCancel={() => { setEditing(null); setAdding(null); }} onDelete={editing ? () => remove(editing.id) : undefined} />
+      )}
+
+      {justLogged && (
+        <p className="mb-4 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm">
+          Logged. <Link href={`/debrief?date=${justLogged}`} className="font-medium text-accent underline">Debrief this flight</Link> while it is fresh.
+        </p>
       )}
 
       <Card className="mb-4">

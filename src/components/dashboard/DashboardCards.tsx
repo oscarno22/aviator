@@ -14,6 +14,8 @@ import { Card, CardTitle } from "@/components/ui/Card";
 import ProgressBar from "@/components/ui/ProgressBar";
 import WeatherCard from "@/components/weather/WeatherCard";
 import Icon from "@/components/Icon";
+import { useReviewQueue } from "@/components/review/ReviewApp";
+import { queueSummary } from "@/lib/reviewQueue";
 
 export default function DashboardCards() {
   const hydrated = useHydrated();
@@ -23,6 +25,7 @@ export default function DashboardCards() {
   const [results] = useStored(simResultsKey);
   const [entries] = useStored(logbookKey);
   const due = useMemo(() => dueCount(srs, [...CONCEPTS, ...custom]), [srs, custom]);
+  const queue = queueSummary(useReviewQueue());
   const reqs = useMemo(() => requirements(entries), [entries]);
   const { data } = useWeather([s.trainingAirport]);
   const metar = data?.metars.find((m) => m.icaoId === s.trainingAirport) ?? null;
@@ -33,12 +36,16 @@ export default function DashboardCards() {
     <div className="grid gap-3 md:grid-cols-2">
       <Card>
         <CardTitle>Today</CardTitle>
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-2xl font-semibold tabular">{hydrated ? due.due : "–"} <span className="text-sm font-normal text-muted">cards due</span></p>
-            <p className="text-xs text-muted">{hydrated ? `${due.learned} learned · ${due.fresh} new` : ""}</p>
-          </div>
-          <Link href="/quiz?mode=pop" className="inline-flex items-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-bg"><Icon name="cards" size={16} /> Pop quiz me</Link>
+        <div className="flex items-center justify-between gap-3">
+          <Link href="/review" className="min-w-0">
+            <p className="text-2xl font-semibold tabular">{hydrated ? queue.open : "–"} <span className="text-sm font-normal text-muted">to review</span></p>
+            <p className="truncate text-xs text-muted">{hydrated ? `${due.due} cards · ${queue.byKind.debrief} from lessons · ${queue.byKind.oral + queue.byKind.radio + queue.byKind.sim} drills` : ""}</p>
+          </Link>
+          <Link href="/review?warmup=1" className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-bg"><Icon name="play" size={14} /> Warm up</Link>
+        </div>
+        <div className="mt-3 flex gap-4 text-xs">
+          <Link href="/debrief" className="text-accent">Debrief a lesson →</Link>
+          <Link href="/quiz?mode=pop" className="text-accent">Pop quiz me →</Link>
         </div>
       </Card>
 
