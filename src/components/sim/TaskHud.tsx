@@ -8,11 +8,11 @@ import Button from "@/components/ui/Button";
 export default function TaskHud({ task, entry, r, elapsed, hud, onEnd }:
   { task: PracticeTask; entry: InstrumentReadout; r: InstrumentReadout; elapsed: number; hud: string; onEnd: () => void }) {
   return (
-    <div className="rounded-xl border border-amber/40 bg-surface p-3">
+    <div className="rounded-xl border border-accent/40 bg-surface p-3">
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-sm font-semibold">{task.title}</p>
-          <p className="mt-0.5 text-xs text-amber">{hud}</p>
+          <p className="mt-0.5 text-xs text-accent">{hud}</p>
         </div>
         <span className="font-mono text-xs tabular text-muted">{elapsed.toFixed(0)} s</span>
       </div>

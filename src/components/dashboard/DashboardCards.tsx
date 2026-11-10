@@ -38,20 +38,20 @@ export default function DashboardCards() {
             <p className="text-2xl font-semibold tabular">{hydrated ? due.due : "–"} <span className="text-sm font-normal text-muted">cards due</span></p>
             <p className="text-xs text-muted">{hydrated ? `${due.learned} learned · ${due.fresh} new` : ""}</p>
           </div>
-          <Link href="/quiz?mode=pop" className="inline-flex items-center gap-2 rounded-lg bg-amber px-3 py-2 text-sm font-medium text-bg"><Icon name="cards" size={16} /> Pop quiz me</Link>
+          <Link href="/quiz?mode=pop" className="inline-flex items-center gap-2 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-bg"><Icon name="cards" size={16} /> Pop quiz me</Link>
         </div>
       </Card>
 
       <Card>
         <CardTitle>Toward the certificate · {hydrated ? `${met} of ${reqs.length}` : ""}</CardTitle>
         {headline.map((r) => <ProgressBar key={r.id} value={r.value} max={r.required} label={r.label} sublabel={`${r.value.toFixed(1)} / ${r.required} h`} />)}
-        <Link href="/logbook" className="mt-1 inline-block text-xs text-amber">All requirements →</Link>
+        <Link href="/logbook" className="mt-1 inline-block text-xs text-accent">All requirements →</Link>
       </Card>
 
       <Card>
         <CardTitle>Last sim tasks</CardTitle>
         {!hydrated || results.length === 0 ? (
-          <p className="text-sm text-muted">No tasks flown yet. <Link href="/sim" className="text-amber">Open the sim →</Link></p>
+          <p className="text-sm text-muted">No tasks flown yet. <Link href="/sim" className="text-accent">Open the sim →</Link></p>
         ) : (
           <ul className="space-y-1 text-sm">
             {results.slice(0, 4).map((r) => (

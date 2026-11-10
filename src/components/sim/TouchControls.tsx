@@ -49,7 +49,7 @@ function Stick({ source }: { source: TouchSource }) {
   return (
     <div ref={ref} className="relative h-36 w-36 rounded-full border border-border bg-surface-2 touch-none" aria-label="Control stick">
       <div className="absolute inset-0 m-auto h-px w-full bg-border" /><div className="absolute inset-0 m-auto h-full w-px bg-border" />
-      <div className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber/90 shadow" style={{ transform: `translate(calc(-50% + ${pos.x * 40}px), calc(-50% + ${pos.y * 40}px))` }} />
+      <div className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/90 shadow" style={{ transform: `translate(calc(-50% + ${pos.x * 40}px), calc(-50% + ${pos.y * 40}px))` }} />
     </div>
   );
 }
@@ -100,7 +100,7 @@ function Throttle({ source, value }: { source: TouchSource; value: number }) {
   return (
     <div className="flex flex-col items-center gap-1">
       <div ref={ref} className="relative h-44 w-10 rounded-full border border-border bg-surface-2 touch-none" aria-label="Throttle">
-        <div className="absolute inset-x-1 bottom-1 rounded-full bg-amber/30" style={{ height: `calc(${value * 100}% - 4px)` }} />
+        <div className="absolute inset-x-1 bottom-1 rounded-full bg-accent/30" style={{ height: `calc(${value * 100}% - 4px)` }} />
         <div className="absolute left-1/2 h-4 w-12 -translate-x-1/2 rounded bg-fg shadow" style={{ top: `calc(${(1 - value) * 100}% - 8px)` }} />
       </div>
       <span className="text-[10px] text-muted">THR {(value * 100).toFixed(0)}%</span>

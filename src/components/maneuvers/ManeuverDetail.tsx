@@ -52,7 +52,7 @@ export default function ManeuverDetail({ maneuver: m }: { maneuver: Maneuver }) 
                   <p>{s.action}</p>
                   {(s.callout || s.target) && (
                     <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs">
-                      {s.callout && <span className="text-amber">&ldquo;{s.callout}&rdquo;</span>}
+                      {s.callout && <span className="text-accent">&ldquo;{s.callout}&rdquo;</span>}
                       {s.target && <span className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-muted">{s.target}</span>}
                     </p>
                   )}
@@ -80,7 +80,7 @@ export default function ManeuverDetail({ maneuver: m }: { maneuver: Maneuver }) 
           <div className="flex flex-wrap gap-2">
             {m.simTaskId && (
               <Link href={`/sim?task=${m.simTaskId}`} className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm hover:bg-surface-2">
-                <Icon name="gauge" size={16} className="text-amber" /> Fly it in the sim
+                <Icon name="gauge" size={16} className="text-accent" /> Fly it in the sim
               </Link>
             )}
             {m.checklistIds?.map((id) => {

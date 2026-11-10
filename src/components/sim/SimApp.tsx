@@ -187,7 +187,7 @@ export default function SimApp() {
             <TaskHud task={task} entry={entry} r={r} elapsed={live.elapsed} hud={live.hud} onEnd={endTask} />
           )}
           {mode === "brief" && task && (
-            <div className="rounded-xl border border-amber/40 bg-surface p-3">
+            <div className="rounded-xl border border-accent/40 bg-surface p-3">
               <p className="text-xs uppercase tracking-wide text-muted">{task.acsRef}</p>
               <h2 className="text-base font-semibold">{task.title}</h2>
               <p className="mt-1 text-sm text-fg/90">{task.description}</p>

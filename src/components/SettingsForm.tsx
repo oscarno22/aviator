@@ -59,11 +59,11 @@ export default function SettingsForm() {
           <CardTitle>Voice</CardTitle>
           <label className="flex items-center justify-between py-1.5">
             <span>Read callouts and ATC aloud</span>
-            <input type="checkbox" className="h-5 w-5 accent-amber" checked={s.voiceEnabled} onChange={(e) => patch({ voiceEnabled: e.target.checked })} />
+            <input type="checkbox" className="h-5 w-5 accent-accent" checked={s.voiceEnabled} onChange={(e) => patch({ voiceEnabled: e.target.checked })} />
           </label>
           <label className="block py-1.5">
             <span className="flex justify-between text-sm"><span>Speech rate</span><span className="tabular text-muted">{s.speechRate.toFixed(2)}×</span></span>
-            <input type="range" min={0.7} max={1.3} step={0.05} className="w-full accent-amber" value={s.speechRate} onChange={(e) => patch({ speechRate: Number(e.target.value) })} />
+            <input type="range" min={0.7} max={1.3} step={0.05} className="w-full accent-accent" value={s.speechRate} onChange={(e) => patch({ speechRate: Number(e.target.value) })} />
           </label>
         </Card>
 
@@ -78,7 +78,7 @@ export default function SettingsForm() {
           </label>
           <label className="flex items-center justify-between py-1.5">
             <span>Light turbulence</span>
-            <input type="checkbox" className="h-5 w-5 accent-amber" checked={s.turbulence} onChange={(e) => patch({ turbulence: e.target.checked })} />
+            <input type="checkbox" className="h-5 w-5 accent-accent" checked={s.turbulence} onChange={(e) => patch({ turbulence: e.target.checked })} />
           </label>
         </Card>
 
@@ -98,14 +98,14 @@ export default function SettingsForm() {
             <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) onImport(f); e.target.value = ""; }} />
             <Button variant="danger" className="ml-auto" onClick={() => { if (confirm("Erase all Aviator data in this browser?")) { clearAll(); setMsg("Cleared."); } }}>Erase all data</Button>
           </div>
-          {msg && <p className="mt-3 text-sm text-amber">{msg}</p>}
+          {msg && <p className="mt-3 text-sm text-accent">{msg}</p>}
         </Card>
       </div>
     </>
   );
 }
 
-const INPUT = "w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm outline-none focus:border-amber";
+const INPUT = "w-full rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm outline-none focus:border-accent";
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (

@@ -60,7 +60,7 @@ export default function QuizApp() {
             const total = CONCEPTS.filter((c) => c.area === a.id).length;
             return (
               <li key={a.id}>
-                <button className="flex w-full items-center justify-between py-2.5 text-left hover:text-amber" onClick={() => { setArea(a.id); startArea(a.id); }}>
+                <button className="flex w-full items-center justify-between py-2.5 text-left hover:text-accent" onClick={() => { setArea(a.id); startArea(a.id); }}>
                   <span>
                     <span className="block text-sm">{a.label}</span>
                     <span className="block text-xs text-muted">ACS {a.acs} · {total} cards · {s.learned} learned{s.due ? ` · ${s.due} due` : ""}</span>
@@ -72,7 +72,7 @@ export default function QuizApp() {
           })}
         </ul>
         {custom.length > 0 && (
-          <button className="mt-2 flex w-full items-center justify-between border-t border-border py-2.5 text-left hover:text-amber" onClick={() => setSession({ mode: "area", cards: shuffle(custom), title: "Saved from pop quizzes" })}>
+          <button className="mt-2 flex w-full items-center justify-between border-t border-border py-2.5 text-left hover:text-accent" onClick={() => setSession({ mode: "area", cards: shuffle(custom), title: "Saved from pop quizzes" })}>
             <span><span className="block text-sm">Saved from pop quizzes</span><span className="block text-xs text-muted">{custom.length} cards</span></span>
             <Icon name="chevron" size={16} className="text-muted" />
           </button>
@@ -86,7 +86,7 @@ export default function QuizApp() {
 function Stat({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
   return (
     <div>
-      <div className={`text-2xl font-semibold tabular ${accent ? "text-amber" : ""}`}>{value}</div>
+      <div className={`text-2xl font-semibold tabular ${accent ? "text-accent" : ""}`}>{value}</div>
       <div className="text-xs uppercase tracking-wide text-muted">{label}</div>
     </div>
   );

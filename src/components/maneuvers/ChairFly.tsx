@@ -75,11 +75,11 @@ export default function ChairFly({ maneuver: m, onClose }: { maneuver: Maneuver;
         </div>
         <div className="flex items-center gap-1">
           {ttsSupported() && (
-            <button className={`rounded-lg p-2 ${voice ? "text-amber" : "text-muted"}`} onClick={() => { unlockSpeech(); setVoice((v) => !v); }} aria-label="Toggle voice">
+            <button className={`rounded-lg p-2 ${voice ? "text-accent" : "text-muted"}`} onClick={() => { unlockSpeech(); setVoice((v) => !v); }} aria-label="Toggle voice">
               <Icon name="mic" />
             </button>
           )}
-          <button className={`rounded-lg p-2 ${auto ? "text-amber" : "text-muted"}`} onClick={() => setAuto((a) => !a)} aria-label="Toggle auto-advance">
+          <button className={`rounded-lg p-2 ${auto ? "text-accent" : "text-muted"}`} onClick={() => setAuto((a) => !a)} aria-label="Toggle auto-advance">
             <Icon name={auto ? "pause" : "play"} />
           </button>
           <button className="rounded-lg p-2 text-muted" onClick={onClose} aria-label="Close"><Icon name="x" /></button>
@@ -87,12 +87,12 @@ export default function ChairFly({ maneuver: m, onClose }: { maneuver: Maneuver;
       </div>
 
       <div className="h-1 w-full bg-surface-2">
-        <div className="h-full bg-amber transition-[width] duration-100" style={{ width: `${((i + (auto ? progress : 0)) / m.steps.length) * 100}%` }} />
+        <div className="h-full bg-accent transition-[width] duration-100" style={{ width: `${((i + (auto ? progress : 0)) / m.steps.length) * 100}%` }} />
       </div>
 
       <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
         <p className="max-w-2xl text-2xl font-medium leading-snug sm:text-3xl">{step.action}</p>
-        {step.callout && <p className="mt-6 text-xl text-amber sm:text-2xl">&ldquo;{step.callout}&rdquo;</p>}
+        {step.callout && <p className="mt-6 text-xl text-accent sm:text-2xl">&ldquo;{step.callout}&rdquo;</p>}
         {step.target && <p className="mt-4 rounded-lg bg-surface-2 px-3 py-1.5 font-mono text-sm text-muted">{step.target}</p>}
       </div>
 
@@ -100,7 +100,7 @@ export default function ChairFly({ maneuver: m, onClose }: { maneuver: Maneuver;
         <button className="rounded-lg px-3 py-2 disabled:opacity-30" onClick={prev} disabled={i === 0}>← Back</button>
         <span className="text-xs">Tap or Space for next</span>
         {last ? (
-          <button className="rounded-lg bg-amber px-3 py-2 font-medium text-bg" onClick={onClose}>Done</button>
+          <button className="rounded-lg bg-accent px-3 py-2 font-medium text-bg" onClick={onClose}>Done</button>
         ) : (
           <button className="rounded-lg px-3 py-2" onClick={next}>Next →</button>
         )}

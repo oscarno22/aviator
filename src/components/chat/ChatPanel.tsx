@@ -112,7 +112,7 @@ export default function ChatPanel({ mode, options, selected, onSelect, placehold
         </div>
         {showBrief && option && (
           <div className="border-t border-border p-3 text-sm">
-            {option.frequency && <p className="mb-1 font-mono text-xs text-amber">{option.frequency}</p>}
+            {option.frequency && <p className="mb-1 font-mono text-xs text-accent">{option.frequency}</p>}
             <p className="text-fg/90">{option.summary}</p>
             <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-muted">{option.briefing.map((b) => <li key={b}>{b}</li>)}</ul>
           </div>
@@ -143,8 +143,8 @@ export default function ChatPanel({ mode, options, selected, onSelect, placehold
                   </div>
                 )}
                 {t.coach && (
-                  <div className="rounded-xl border border-amber/30 bg-amber/5 px-3 py-2 text-xs">
-                    <p className="mb-0.5 font-semibold uppercase tracking-wide text-amber">{mode === "radio" ? "Instructor" : mode === "oral" ? "Examiner's notes" : "Answer"}</p>
+                  <div className="rounded-xl border border-accent/30 bg-accent/5 px-3 py-2 text-xs">
+                    <p className="mb-0.5 font-semibold uppercase tracking-wide text-accent">{mode === "radio" ? "Instructor" : mode === "oral" ? "Examiner's notes" : "Answer"}</p>
                     <p className="whitespace-pre-wrap text-fg/90">{t.coach}</p>
                     {mode === "popquiz" && t.done && i > 0 && (
                       <button className="mt-1.5 rounded-md border border-border px-2 py-1 text-[11px] hover:bg-surface-2" onClick={() => saveCard(t, i)}>+ Add to review deck</button>
@@ -168,7 +168,7 @@ export default function ChatPanel({ mode, options, selected, onSelect, placehold
             <Icon name="mic" className="mx-auto" />
           </button>
         )}
-        <textarea className="min-h-11 flex-1 resize-none rounded-xl border border-border bg-surface-2 px-3 py-2.5 text-sm outline-none focus:border-amber" rows={1}
+        <textarea className="min-h-11 flex-1 resize-none rounded-xl border border-border bg-surface-2 px-3 py-2.5 text-sm outline-none focus:border-accent" rows={1}
           placeholder={placeholder} value={input} onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(input); } }} disabled={streaming || turns.length === 0} />
         <Button type="submit" variant="primary" className="h-11" disabled={streaming || !input.trim() || turns.length === 0}>{sendLabel}</Button>

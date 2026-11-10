@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
-/* Dark-only cockpit theme. Tokens exposed to Tailwind via @theme. */
+/* Dark-only cockpit theme. Tokens exposed to Tailwind via @theme.
+   accent = actions and selection. warn (amber) and danger = states only.
+   trim = decoration only: never on controls, text or states. */
 :root {
   color-scheme: dark;
   --bg: #0b1220;
@@ -9,7 +11,9 @@
   --border: #26324a;
   --fg: #e6ecf5;
   --muted: #8a97ad;
-  --amber: #f5b23a;
+  --accent: #5aa2ff;
+  --silver: #c3ccd9;
+  --trim: #b3202f;
   --sky: #3b82f6;
   --ok: #34d399;
   --warn: #fbbf24;
@@ -25,7 +29,9 @@
   --color-border: var(--border);
   --color-fg: var(--fg);
   --color-muted: var(--muted);
-  --color-amber: var(--amber);
+  --color-accent: var(--accent);
+  --color-silver: var(--silver);
+  --color-trim: var(--trim);
   --color-sky: var(--sky);
   --color-ok: var(--ok);
   --color-warn: var(--warn);
@@ -58,8 +64,8 @@ body {
   -webkit-user-select: none;
 }
 
-@keyframes pulse-amber {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 178, 58, 0.0); }
-  50% { box-shadow: 0 0 0 6px rgba(245, 178, 58, 0.25); }
+@keyframes pulse-warn {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.0); }
+  50% { box-shadow: 0 0 0 6px rgba(251, 191, 36, 0.25); }
 }
-.pulse-amber { animation: pulse-amber 1.2s ease-in-out infinite; }
+.pulse-warn { animation: pulse-warn 1.2s ease-in-out infinite; }

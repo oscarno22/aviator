@@ -16,7 +16,7 @@ export default function Home() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {links.map((n) => (
           <Link key={n.href} href={n.href} className="flex flex-col gap-2 rounded-xl border border-border bg-surface p-4 hover:bg-surface-2">
-            <Icon name={n.icon} size={22} className="text-amber" />
+            <Icon name={n.icon} size={22} className="text-accent" />
             <span className="text-sm font-medium">{n.label}</span>
           </Link>
         ))}

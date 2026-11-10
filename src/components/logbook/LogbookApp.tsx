@@ -69,7 +69,7 @@ export default function LogbookApp() {
           <ul className="mt-2 divide-y divide-border">
             {sorted.map((e) => (
               <li key={e.id}>
-                <button className="flex w-full items-center justify-between gap-3 py-2.5 text-left hover:text-amber" onClick={() => { setAdding(null); setEditing(e); }}>
+                <button className="flex w-full items-center justify-between gap-3 py-2.5 text-left hover:text-accent" onClick={() => { setAdding(null); setEditing(e); }}>
                   <span className="min-w-0">
                     <span className="block text-sm">{e.date} · {e.kind === "carryforward" ? "Carry-forward" : e.route || e.aircraft}{e.tail ? ` · ${e.tail}` : ""}</span>
                     <span className="block truncate text-xs text-muted">{e.total.toFixed(1)} h{e.dual ? ` · dual ${e.dual.toFixed(1)}` : ""}{e.solo ? ` · solo ${e.solo.toFixed(1)}` : ""}{e.night ? ` · night ${e.night.toFixed(1)}` : ""}{e.landingsDay + e.landingsNight ? ` · ${e.landingsDay + e.landingsNight} ldg` : ""}{e.remarks ? ` · ${e.remarks}` : ""}</span>

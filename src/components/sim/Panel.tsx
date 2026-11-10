@@ -69,5 +69,5 @@ function Readout({ label, value }: { label: string; value: string }) {
 }
 function Flag({ on, text, cls }: { on: boolean; text: string; cls: string }) {
   if (!on) return null;
-  return <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wide ${cls} ${text === "STALL" || text === "STALL WARN" ? "pulse-amber" : ""}`}>{text}</span>;
+  return <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold tracking-wide ${cls} ${text === "STALL" || text === "STALL WARN" ? "pulse-warn" : ""}`}>{text}</span>;
 }

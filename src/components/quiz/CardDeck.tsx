@@ -71,14 +71,14 @@ export default function CardDeck({ title, cards, mode, onExit }: { title: string
         <button onClick={onExit} className="flex items-center gap-1 hover:text-fg"><Icon name="x" size={14} /> {title}</button>
         <span className="tabular">{Math.min(answered + 1, total)} / {total}{queue.length > total - answered ? ` (+${queue.length - (total - answered)} retry)` : ""}</span>
       </div>
-      <div className="h-1 w-full rounded bg-surface-2"><div className="h-full rounded bg-amber" style={{ width: `${(answered / Math.max(1, total)) * 100}%` }} /></div>
+      <div className="h-1 w-full rounded bg-surface-2"><div className="h-full rounded bg-accent" style={{ width: `${(answered / Math.max(1, total)) * 100}%` }} /></div>
 
       <button className="mt-4 flex flex-1 flex-col rounded-2xl border border-border bg-surface p-6 text-left" onClick={() => setFlipped(true)} aria-label="Reveal answer">
         <span className="text-xs uppercase tracking-wide text-muted">{areaLabel}</span>
         <span className="mt-3 text-xl font-medium leading-snug sm:text-2xl">{card.q}</span>
         {flipped ? (
           <span className="mt-6 border-t border-border pt-5">
-            <span className="block text-lg leading-snug text-amber">{card.a}</span>
+            <span className="block text-lg leading-snug text-accent">{card.a}</span>
             {card.why && <span className="mt-3 block text-sm text-muted"><span className="font-semibold text-fg/80">Why? </span>{card.why}</span>}
           </span>
         ) : (

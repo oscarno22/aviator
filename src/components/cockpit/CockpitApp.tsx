@@ -56,7 +56,7 @@ export default function CockpitApp() {
       )}
 
       {quiz && (
-        <div className="mt-3 rounded-xl border border-amber/40 bg-surface p-4">
+        <div className="mt-3 rounded-xl border border-accent/40 bg-surface p-4">
           {target ? (
             <>
               <div className="flex items-center justify-between text-xs text-muted">
@@ -106,7 +106,7 @@ export default function CockpitApp() {
         <ul className="mt-4 grid gap-1 text-sm sm:grid-cols-2">
           {items.map((it) => (
             <li key={it.id}>
-              <button className={`w-full rounded-lg px-3 py-1.5 text-left hover:bg-surface-2 ${selected?.id === it.id ? "bg-surface-2 text-amber" : ""}`} onClick={() => setSelected(it)}>{it.name}</button>
+              <button className={`w-full rounded-lg px-3 py-1.5 text-left hover:bg-surface-2 ${selected?.id === it.id ? "bg-surface-2 text-accent" : ""}`} onClick={() => setSelected(it)}>{it.name}</button>
             </li>
           ))}
         </ul>
@@ -120,7 +120,7 @@ function ItemBody({ item }: { item: CockpitItem }) {
     <div className="mt-2 space-y-2 text-sm">
       <p><span className="font-semibold text-muted">What it is. </span>{item.whatItIs}</p>
       <p><span className="font-semibold text-muted">What it does. </span>{item.whatItDoes}</p>
-      <p><span className="font-semibold text-amber">What to check. </span>{item.whatToCheck}</p>
+      <p><span className="font-semibold text-accent">What to check. </span>{item.whatToCheck}</p>
       {item.gotchas && <p className="text-fg/80"><span className="font-semibold text-danger">Gotcha. </span>{item.gotchas}</p>}
       {item.checklistIds && item.checklistIds.length > 0 && (
         <p className="flex flex-wrap gap-2 pt-1">

@@ -38,7 +38,7 @@ export default function ChecklistRunner({ checklist, next }: { checklist: Checkl
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">{checklist.title}</h1>
           <p className="mt-1 text-sm text-muted">
             {checklist.phase === "emergency" ? "Emergency" : "Normal"} · {checklist.items.length} items
-            {checklist.memory && <span className="ml-2 rounded bg-amber/15 px-1.5 py-0.5 text-[11px] font-semibold text-amber">MEMORY ITEMS</span>}
+            {checklist.memory && <span className="ml-2 rounded bg-warn/15 px-1.5 py-0.5 text-[11px] font-semibold text-warn">MEMORY ITEMS</span>}
           </p>
         </div>
         <Segmented value={mode} onChange={(m) => { setMode(m); setRevealed(new Set()); }}
@@ -60,14 +60,14 @@ export default function ChecklistRunner({ checklist, next }: { checklist: Checkl
                 onClick={() => (mode === "run" ? toggle(i) : setRevealed((r) => { const n = new Set(r); if (n.has(i)) n.delete(i); else n.add(i); return n; }))}
                 aria-pressed={isChecked}
               >
-                <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${isChecked ? "border-amber bg-amber text-bg" : "border-border text-transparent"}`}>
+                <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${isChecked ? "border-accent bg-accent text-bg" : "border-border text-transparent"}`}>
                   <Icon name="check" size={16} />
                 </span>
                 <span className="flex-1">
                   <span className={`block ${isChecked ? "text-muted line-through decoration-muted/50" : ""}`}>{item.challenge}</span>
                   {item.note && !isChecked && <span className="mt-0.5 block text-xs text-muted">{item.note}</span>}
                 </span>
-                <span className={`ml-2 shrink-0 max-w-[45%] text-right font-mono text-sm uppercase tracking-tight ${mode === "quiz" && !isRevealed ? "rounded bg-surface-2 text-transparent select-none" : isChecked ? "text-muted" : "text-amber"}`}>
+                <span className={`ml-2 shrink-0 max-w-[45%] text-right font-mono text-sm uppercase tracking-tight ${mode === "quiz" && !isRevealed ? "rounded bg-surface-2 text-transparent select-none" : isChecked ? "text-muted" : "text-accent"}`}>
                   {item.response}
                 </span>
               </button>
@@ -92,7 +92,7 @@ export default function ChecklistRunner({ checklist, next }: { checklist: Checkl
       </div>
 
       {allDone && mode === "run" && next && (
-        <Link href={`/checklists/${next.id}`} className="mt-4 flex items-center justify-between rounded-xl border border-amber/40 bg-amber/10 px-4 py-3 text-amber">
+        <Link href={`/checklists/${next.id}`} className="mt-4 flex items-center justify-between rounded-xl border border-accent/40 bg-accent/10 px-4 py-3 text-accent">
           <span>Checklist complete. Next: {next.title}</span>
           <Icon name="chevron" size={18} />
         </Link>

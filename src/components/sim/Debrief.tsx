@@ -60,7 +60,7 @@ function Sparkline({ series, target, tol }: { series: number[]; target: number; 
     <svg viewBox={`0 0 ${w} ${h}`} className="mt-1 h-9 w-full" preserveAspectRatio="none" aria-hidden="true">
       <rect x={0} y={y(target + tol)} width={w} height={Math.max(1, y(target - tol) - y(target + tol))} fill="rgba(52,211,153,0.12)" />
       <line x1={0} y1={h / 2} x2={w} y2={h / 2} stroke="var(--border)" strokeDasharray="3 3" />
-      <polyline points={pts} fill="none" stroke="var(--amber)" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+      <polyline points={pts} fill="none" stroke="var(--accent)" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }

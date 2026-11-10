@@ -8,7 +8,7 @@ export const VIEWBOX: Record<Zone, string> = { panel: "0 0 1000 560", walkaround
 export function HotspotShape({ item, state, showLabel, onClick }:
   { item: CockpitItem; state: "idle" | "selected" | "target"; showLabel: boolean; onClick: () => void }) {
   const h = item.hotspot;
-  const stroke = state === "idle" ? "var(--border)" : "var(--amber)";
+  const stroke = state === "idle" ? "var(--border)" : "var(--accent)";
   const fill = state === "target" ? "rgba(245,178,58,0.35)" : state === "selected" ? "rgba(245,178,58,0.15)" : "rgba(26,36,57,0.9)";
   const cls = state === "target" ? "cockpit-target" : "";
   const center = "cx" in h ? { x: h.cx, y: h.cy } : { x: h.x + h.w / 2, y: h.y + h.h / 2 };
