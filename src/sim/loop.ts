@@ -2,7 +2,7 @@
  * requestAnimationFrame loop with a fixed 60 Hz accumulator, input sources,
  * rate-limited output sinks and a 30 Hz UI callback. Idempotent start/stop.
  */
-import { FIXED_DT, readout, step, zeroGust, type Gust } from "./engine";
+import { FIXED_DT, readout, step, zeroGust, type Gust, type StepEnv } from "./engine";
 import type { ControlInputs, SimSnapshot, SimState } from "./types";
 import { mergeInputs } from "./io/merge";
 import type { InputSource, OutputSink } from "./io/types";
@@ -17,6 +17,8 @@ export class SimLoop {
   inputs: ControlInputs;
   paused = false;
   options: LoopOptions = { turbulence: false };
+  /** Ground and wind for runway tasks. Undefined (the default) keeps the plain airwork behaviour. */
+  env?: StepEnv;
   onFrame?: (snap: SimSnapshot) => void;
   /** Optional per-step hook (tasks inject events such as an engine failure). */
   onStep?: (state: SimState, inputs: ControlInputs) => Partial<SimState> | null;
@@ -61,7 +63,8 @@ export class SimLoop {
     this.sinks.forEach((s) => s.stop?.());
   }
 
-  reset(init: { state: SimState; inputs: ControlInputs }) {
+  reset(init: { state: SimState; inputs: ControlInputs }, env?: StepEnv) {
+    this.env = env;
     this.state = init.state;
     this.inputs = init.inputs;
     this.gust = zeroGust();
@@ -78,7 +81,7 @@ export class SimLoop {
   togglePause() { this.setPaused(!this.paused); }
 
   snapshot(): SimSnapshot {
-    return { t: this.state.t, state: this.state, readout: readout(this.state), inputs: this.inputs, paused: this.paused };
+    return { t: this.state.t, state: this.state, readout: readout(this.state, this.env), inputs: this.inputs, paused: this.paused };
   }
 
   private frame = (ts: number) => {
@@ -95,7 +98,7 @@ export class SimLoop {
       while (this.acc >= FIXED_DT) {
         const patch = this.onStep?.(this.state, this.inputs);
         if (patch) this.state = { ...this.state, ...patch };
-        this.state = step(this.state, this.inputs, FIXED_DT, { turbulence: this.options.turbulence }, this.gust);
+        this.state = step(this.state, this.inputs, FIXED_DT, this.env ? { turbulence: this.options.turbulence, env: this.env } : { turbulence: this.options.turbulence }, this.gust);
         this.acc -= FIXED_DT;
       }
     }

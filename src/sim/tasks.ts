@@ -4,7 +4,14 @@
  */
 import { initialState } from "./engine";
 import type { ControlInputs, InstrumentReadout, SimSnapshot, SimState } from "./types";
-import { angleDiff } from "@/lib/units";
+import { M_TO_FT, MS_TO_FPM, NM_TO_M, RAD_TO_DEG, angleDiff, wrap360 } from "@/lib/units";
+import { DEFAULT_SETTINGS } from "@/lib/settings";
+import {
+  CLIMB_SETTLE_SEC, CLOSED_PATTERN_SEQUENCE, GO_AROUND_SEQUENCE, GO_AROUND_START_FINAL_NM, LANDING, PATTERN, PATTERN_SEQUENCE,
+  SPEEDS, TAKEOFF, TAKEOFF_SEQUENCE, type GateId, type SequenceSpec,
+} from "@/data/procedures";
+import { glidepathHeightM, type Gates, type Leg } from "./pattern";
+import { fromFrame, runwayFrom, toFrame, type RunwayFrame } from "./world";
 
 export type ParamKey = "alt" | "hdg" | "ias" | "bank" | "vs" | "turnRate" | "ball";
 
@@ -19,6 +26,8 @@ export interface TaskParam {
   graceSec?: number; // samples before this are ignored
   wrap?: boolean;    // heading arithmetic
   minPct?: number;   // pass threshold override (default 0.9)
+  /** Only grade the samples between two gates (to the end of the run when `to` is left out). graceSec then counts from `from`. */
+  segment?: { from: GateId; to?: GateId };
 }
 
 export interface TaskSetup { state: SimState; inputs: ControlInputs; coverInstrumentsSec?: number }
@@ -30,6 +39,16 @@ export interface TaskContext {
   latest: SimSnapshot;
   /** Free-form scratch space for isComplete/event bookkeeping. */
   memo: Record<string, number | boolean | undefined>;
+  // ---- sequence tasks only
+  runway?: RunwayFrame;
+  /** Sample index at which each gate was passed. */
+  gates?: Gates;
+  leg?: Leg | null;
+  /** Set when the pattern could not be followed; the run ends ungraded. */
+  lost?: string;
+  /** Ground track in runway coordinates [along, cross], metres, 2 Hz. */
+  track?: [number, number][];
+  coached?: boolean;
 }
 
 export interface PracticeTask {
@@ -38,7 +57,10 @@ export interface PracticeTask {
   acsRef: string;
   description: string;
   briefing: string[];
-  setup(): TaskSetup;
+  /** Sequence tasks are placed relative to the runway; airwork tasks ignore it. */
+  setup(runway?: RunwayFrame): TaskSetup;
+  /** Graded procedure steps. Tasks with a sequence fly over a runway with ground and a pattern map. */
+  sequence?: SequenceSpec;
   params: TaskParam[];
   durationSec?: number;   // hard stop
   isComplete(ctx: TaskContext): boolean;
@@ -319,5 +341,231 @@ export const TASKS: PracticeTask[] = [
     hud: (ctx) => (ctx.latest.readout.engineOut ? "ENGINE OUT: pitch for 68 kt, trim, hold heading" : "Cruise... stand by"),
   },
 ];
+
+// ---------------------------------------------------------------- runway tasks
+
+/** The runway used when the app does not pass one (tests, server render). */
+export const defaultRunway = (): RunwayFrame => runwayFrom(DEFAULT_SETTINGS.trainingAirport, undefined, DEFAULT_SETTINGS.runwayHeading);
+
+const rwyDeg = (f: RunwayFrame) => wrap360(f.hdgRad * RAD_TO_DEG);
+const sinceGate = (ctx: TaskContext, g: GateId) => (ctx.gates?.[g] == null ? -1 : (ctx.samples.length - 1 - ctx.gates[g]!) / 10);
+const sideWord = (f: RunwayFrame, cross: number) => ((f.patternSide === "left" ? -cross : cross) >= 0 ? "right" : "left");
+
+function downwindStart(f: RunwayFrame): TaskSetup {
+  const p = fromFrame(f, f.lengthM / 2, PATTERN.downwindOffsetNm * NM_TO_M);
+  return initialState({ altFt: f.patternAltM * M_TO_FT, iasKt: PATTERN.downwindIasKt, hdgDeg: wrap360(rwyDeg(f) + 180), xM: p.x, yM: p.y });
+}
+
+function finalStart(f: RunwayFrame): TaskSetup {
+  const along = -GO_AROUND_START_FINAL_NM * NM_TO_M;
+  const p = fromFrame(f, along, 0);
+  return initialState({
+    altFt: (f.elevM + glidepathHeightM(along)) * M_TO_FT, iasKt: SPEEDS.final.target, hdgDeg: rwyDeg(f), flaps: 30,
+    pathDeg: -PATTERN.glidepathDeg, xM: p.x, yM: p.y,
+  });
+}
+
+function runwayStart(f: RunwayFrame): TaskSetup {
+  const p = fromFrame(f, 15, 0);
+  return initialState({ altFt: f.elevM * M_TO_FT, iasKt: SPEEDS.vy.target, hdgDeg: rwyDeg(f), flaps: TAKEOFF.flaps, onGround: true, xM: p.x, yM: p.y });
+}
+
+function thresholdFindings(ctx: TaskContext): Finding[] {
+  const i = ctx.gates?.threshold, f = ctx.runway;
+  if (i == null || !f) return [];
+  const s = ctx.samples[i];
+  const { cross } = toFrame(f, s.state.x, s.state.y);
+  const off = Math.abs(cross);
+  const out: Finding[] = [];
+  out.push(off > f.widthM / 2
+    ? { severity: "fail", text: `Crossed the threshold ${off.toFixed(0)} m ${sideWord(f, cross)} of the centreline: not over the runway.` }
+    : { severity: "info", text: `Crossed the threshold ${off.toFixed(0)} m from the centreline at ${s.readout.agl.toFixed(0)} ft.` });
+  const ias = s.readout.ias;
+  out.push(ias >= SPEEDS.final.min && ias <= SPEEDS.final.max
+    ? { severity: "info", text: `Speed over the threshold: ${ias.toFixed(0)} kt.` }
+    : { severity: "warn", text: `Speed over the threshold: ${ias.toFixed(0)} kt. Aim for ${SPEEDS.final.target} (${SPEEDS.final.min} to ${SPEEDS.final.max}).` });
+  return out;
+}
+
+function wentAround(ctx: TaskContext): Finding[] {
+  return ctx.gates?.goAround != null
+    ? [{ severity: "fail", text: "You went around. That is always a good call in the airplane, but this run does not count as a finished approach." }]
+    : [];
+}
+
+/** Coarse only: where it touched down and how hard. Flare, bounce and crosswind technique are not graded. */
+function landingFindings(ctx: TaskContext): Finding[] {
+  const i = ctx.gates?.touchdown, f = ctx.runway;
+  if (i == null || !f) return [];
+  const s = ctx.samples[i];
+  const { along } = toFrame(f, s.state.x, s.state.y);
+  const zoneFt = Math.min(PATTERN.touchdownZoneFt, (f.lengthM * M_TO_FT) / 3);
+  const alongFt = along * M_TO_FT;
+  const sink = s.state.tdSink * MS_TO_FPM;
+  return [
+    { severity: "info", text: "Landed on the runway." },
+    alongFt <= zoneFt
+      ? { severity: "info", text: `Touched down ${alongFt.toFixed(0)} ft past the threshold, in the touchdown zone.` }
+      : { severity: "warn", text: `Touched down ${alongFt.toFixed(0)} ft past the threshold, beyond the touchdown zone (first ${zoneFt.toFixed(0)} ft).` },
+    sink <= LANDING.gentleSinkFpm
+      ? { severity: "info", text: `Sink rate at touchdown: ${sink.toFixed(0)} fpm.` }
+      : { severity: "warn", text: `Firm touchdown: ${sink.toFixed(0)} fpm. Keep raising the nose as it sinks.` },
+  ];
+}
+
+function takeoffFindings(ctx: TaskContext): Finding[] {
+  const i = ctx.gates?.liftoff, f = ctx.runway;
+  if (!f) return [];
+  if (i == null) return [{ severity: "fail", text: "Never left the ground." }];
+  const ias = ctx.samples[i].readout.ias;
+  const out: Finding[] = [ias >= SPEEDS.rotate.min && ias <= SPEEDS.rotate.max
+    ? { severity: "info", text: `Lifted off at ${ias.toFixed(0)} kt.` }
+    : { severity: "warn", text: `Lifted off at ${ias.toFixed(0)} kt. Rotate at ${SPEEDS.rotate.target}.` }];
+  let maxOff = 0;
+  for (let k = 0; k < i; k++) maxOff = Math.max(maxOff, Math.abs(toFrame(f, ctx.samples[k].state.x, ctx.samples[k].state.y).cross));
+  out.push(maxOff <= TAKEOFF.centrelineWarnM
+    ? { severity: "info", text: `Stayed within ${Math.max(1, Math.ceil(maxOff))} m of the centreline on the roll.` }
+    : { severity: "warn", text: `Drifted ${maxOff.toFixed(0)} m off the centreline on the roll. More right rudder as the power comes in.` });
+  return out;
+}
+
+const downwindParams: TaskParam[] = [
+  { key: "alt", label: "Downwind altitude", unit: "ft", target: "entry", tol: 100, segment: { from: "start", to: "abeam" } },
+  { key: "ias", label: "Downwind airspeed", unit: "kt", target: PATTERN.downwindIasKt, tol: 10, segment: { from: "start", to: "abeam" } },
+];
+const finalParam: TaskParam = {
+  key: "ias", label: "Final airspeed", unit: "kt", target: SPEEDS.final.target, tol: 10, tolLow: 5, tolHigh: 10,
+  segment: { from: "agl300", to: "threshold" },
+};
+const climbParam: TaskParam = {
+  key: "ias", label: "Climb airspeed", unit: "kt", target: SPEEDS.vy.target, tol: 10, tolLow: 5, tolHigh: 10,
+  graceSec: CLIMB_SETTLE_SEC, minPct: 0.8, segment: { from: "positiveRate" },
+};
+
+function patternHud(ctx: TaskContext): string {
+  const f = ctx.runway;
+  if (!f) return "";
+  const { along } = toFrame(f, ctx.latest.state.x, ctx.latest.state.y);
+  switch (ctx.leg) {
+    case "upwind": return ctx.latest.readout.onGround ? "Full power, hold the centreline, rotate at 55" : "Upwind: climb at 74 kt, then turn crosswind";
+    case "crosswind": return "Crosswind: level at pattern altitude, turn downwind 1 mile out";
+    case "downwind": return along > 0 ? `Downwind: hold altitude and 90 kt · abeam the numbers in ${(along / NM_TO_M).toFixed(1)} nm` : "Past abeam: descend, turn base when the numbers are 45 degrees behind the wing";
+    case "base": return "Base: keep descending, turn final to line up with the runway";
+    case "final": return ctx.latest.readout.onGround ? "On the runway: throttle idle, hold the centreline" : "Final: 65 kt, two red and two white, stay on the centreline";
+    default: return "Fly the pattern";
+  }
+}
+
+TASKS.push(
+  {
+    id: "pattern-downwind",
+    title: "Pattern: downwind to threshold",
+    acsRef: "PA.III.B / PA.IV.B",
+    description: "Start midfield on downwind and fly the configuration steps in order down to the runway threshold. The run ends at the threshold.",
+    briefing: [
+      "Midfield downwind at pattern altitude, 90 knots, 1 mile from the runway. Use the pattern map: there is no outside view.",
+      "Abeam the numbers: power to about 1500 rpm, flaps 10, 80 knots. Base: flaps 20, 70 knots. Final: flaps 30, 65 knots.",
+      "Be set up and on speed by 300 ft above the runway. Flaps 10 only below 110 knots, more flap only below 85.",
+    ],
+    setup: (f = defaultRunway()) => downwindStart(f),
+    sequence: PATTERN_SEQUENCE,
+    params: [...downwindParams, finalParam],
+    durationSec: 420,
+    isComplete: (ctx) => ctx.gates?.threshold != null || sinceGate(ctx, "goAround") >= 5,
+    extraFindings: (ctx) => {
+      const out = [...thresholdFindings(ctx), ...wentAround(ctx)];
+      if (ctx.gates?.threshold == null && ctx.gates?.goAround == null && !ctx.lost && !ctx.latest.readout.crashed) out.push({ severity: "fail", text: "Did not reach the runway threshold." });
+      return out;
+    },
+    hud: patternHud,
+  },
+  {
+    id: "go-around",
+    title: "Go-around from short final",
+    acsRef: "PA.IV.N",
+    description: "Fly the approach from a half-mile final. When the call comes, go around: power, flaps 20, positive rate, flaps 10, 74 knots, flaps up.",
+    briefing: [
+      "Half a mile out on final, 65 knots, flaps 30, descending on the glidepath.",
+      "On the call: full throttle and flaps 20 at once. Push against the trim so the nose does not balloon.",
+      "When the VSI shows a climb: flaps 10. Then 74 knots, and flaps up above 60 knots.",
+    ],
+    setup: (f = defaultRunway()) => finalStart(f),
+    sequence: GO_AROUND_SEQUENCE,
+    params: [
+      { key: "hdg", label: "Heading", unit: "deg", target: "entry", tol: 10, wrap: true },
+      climbParam,
+    ],
+    durationSec: 150,
+    isComplete: (ctx) => {
+      const since = sinceGate(ctx, "goAround");
+      if (since < 0) return false;
+      return since >= 60 || (ctx.gates?.positiveRate != null && stable(ctx, 5, (r, s) => s.inputs.flaps === 0 && r.ias >= SPEEDS.vy.min && r.vs > 0));
+    },
+    extraFindings: (ctx) => {
+      const g = ctx.gates?.goAround;
+      if (g == null) return ctx.lost ? [] : [{ severity: "fail", text: "The go-around call never came. Stay on the approach until it does." }];
+      const after = ctx.samples.slice(g);
+      const out: Finding[] = [{ severity: "info", text: `Lowest point after the call: ${Math.max(0, Math.min(...after.map((s) => s.readout.agl))).toFixed(0)} ft above the runway.` }];
+      const up = after.find((s) => s.inputs.flaps === 0);
+      if (up && up.readout.ias < SPEEDS.flapsUpMin) out.push({ severity: "warn", text: `Flaps came up at ${up.readout.ias.toFixed(0)} kt. Wait for ${SPEEDS.flapsUpMin} or more.` });
+      return out;
+    },
+    hud: (ctx) => (ctx.gates?.goAround != null ? "GO AROUND" : "Continue the approach: 65 kt, flaps 30. Be ready for the call."),
+  },
+  {
+    id: "normal-takeoff",
+    title: "Normal takeoff",
+    acsRef: "PA.IV.A",
+    description: "Full power, hold the centreline with rudder, rotate at 55, climb at 74 knots and bring the flaps up. The run ends 500 ft above the runway.",
+    briefing: [
+      "Lined up on the centreline, flaps 10, engine idling.",
+      "Smoothly to full throttle. The airplane pulls left: hold the centreline with right rudder.",
+      "At 55 knots ease back to rotate. Pitch for 74. With a climb showing, flaps up and trim.",
+    ],
+    setup: (f = defaultRunway()) => runwayStart(f),
+    sequence: TAKEOFF_SEQUENCE,
+    params: [
+      { key: "hdg", label: "Runway heading", unit: "deg", target: "entry", tol: 10, wrap: true },
+      climbParam,
+    ],
+    durationSec: 180,
+    isComplete: (ctx) => ctx.gates?.liftoff != null && ctx.latest.readout.agl >= TAKEOFF.endAglFt,
+    extraFindings: (ctx) => {
+      const out = takeoffFindings(ctx);
+      if (ctx.gates?.liftoff != null && ctx.latest.readout.agl < TAKEOFF.endAglFt && !ctx.latest.readout.crashed && !ctx.lost) out.push({ severity: "fail", text: `Did not climb to ${TAKEOFF.endAglFt} ft above the runway.` });
+      return out;
+    },
+    hud: (ctx) => (ctx.latest.readout.onGround ? "Full power, right rudder, rotate at 55" : `Climb at 74 kt on runway heading · ${Math.max(0, TAKEOFF.endAglFt - ctx.latest.readout.agl).toFixed(0)} ft to go`),
+  },
+  {
+    id: "closed-pattern",
+    title: "Full closed pattern",
+    acsRef: "PA.III.B / PA.IV.A / PA.IV.B",
+    description: "Take off, fly the whole pattern and land. Steps are graded all the way round; the landing itself is only checked coarsely.",
+    briefing: [
+      "Take off as in the takeoff drill. Climb at 74 knots, flaps up, turn crosswind within 300 ft of pattern altitude.",
+      "Level at pattern altitude, turn downwind 1 mile from the runway at 90 knots. Then the same steps as the downwind drill.",
+      "Over the threshold: throttle to idle and hold it off. The brakes come on by themselves at idle. Flare quality is not graded.",
+    ],
+    setup: (f = defaultRunway()) => runwayStart(f),
+    sequence: CLOSED_PATTERN_SEQUENCE,
+    params: [finalParam],
+    durationSec: 900,
+    isComplete: (ctx) => sinceGate(ctx, "touchdown") >= 5 || sinceGate(ctx, "goAround") >= 5,
+    extraFindings: (ctx) => {
+      const out = [...takeoffFindings(ctx)];
+      const f = ctx.runway, ab = ctx.gates?.abeam;
+      if (f && ab != null) {
+        const dev = ctx.samples[ab].readout.alt - f.patternAltM * M_TO_FT;
+        out.push({ severity: Math.abs(dev) <= 100 ? "info" : "warn", text: `Abeam the numbers ${Math.abs(dev).toFixed(0)} ft ${dev >= 0 ? "above" : "below"} pattern altitude.` });
+      }
+      out.push(...thresholdFindings(ctx), ...landingFindings(ctx), ...wentAround(ctx));
+      if (ctx.gates?.touchdown == null && ctx.gates?.goAround == null && !ctx.lost && !ctx.latest.readout.crashed) out.push({ severity: "fail", text: "Did not land." });
+      return out;
+    },
+    hud: patternHud,
+  },
+);
+
 
 export const taskById = (id: string) => TASKS.find((t) => t.id === id);

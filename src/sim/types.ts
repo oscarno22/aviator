@@ -35,6 +35,8 @@ export interface SimState {
   crashed: boolean;
   overstress: boolean;
   engineOut: boolean;
+  onGround: boolean; // wheels on the ground (only ever true when the engine is given a ground environment)
+  tdSink: number;    // m/s, sink rate at the last touchdown (0 until one happens)
 }
 
 /** Aviation units for instruments, sinks and scoring. */
@@ -56,6 +58,8 @@ export interface InstrumentReadout {
   stalled: boolean;
   crashed: boolean;
   engineOut: boolean;
+  agl: number;       // ft above the ground (above sea level when there is no ground environment)
+  onGround: boolean;
 }
 
 export interface SimSnapshot {

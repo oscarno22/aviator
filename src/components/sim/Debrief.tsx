@@ -1,9 +1,14 @@
 "use client";
 
-import type { TaskResult, ParamResult } from "@/sim/scoring";
+import type { TaskResult, ParamResult, StepResult } from "@/sim/scoring";
+import type { RunwayFrame } from "@/sim/world";
 import Button from "@/components/ui/Button";
+import PatternMap from "./PatternMap";
 
-export default function Debrief({ result, onRetry, onClose }: { result: TaskResult; onRetry: () => void; onClose: () => void }) {
+const STEP_CLS: Record<StepResult["status"], string> = { onTime: "text-ok", late: "text-warn", early: "text-danger", missed: "text-danger" };
+const STEP_WORD: Record<StepResult["status"], string> = { onTime: "on time", late: "late", early: "early", missed: "missed" };
+
+export default function Debrief({ result, frame, onRetry, onClose }: { result: TaskResult; frame?: RunwayFrame; onRetry: () => void; onClose: () => void }) {
   return (
     <div className="rounded-xl border border-border bg-surface p-4">
       <div className="flex items-start justify-between gap-3">
@@ -11,12 +16,29 @@ export default function Debrief({ result, onRetry, onClose }: { result: TaskResu
           <p className="text-xs uppercase tracking-wide text-muted">Debrief</p>
           <h2 className="text-lg font-semibold">{result.title}</h2>
         </div>
-        <span className={`rounded-md px-2 py-1 text-sm font-bold ${result.pass ? "bg-ok/15 text-ok" : "bg-danger/15 text-danger"}`}>{result.pass ? "WITHIN STANDARDS" : "NOT YET"}</span>
+        <span className={`rounded-md px-2 py-1 text-sm font-bold ${result.ungraded ? "bg-surface-2 text-muted" : result.pass ? "bg-ok/15 text-ok" : "bg-danger/15 text-danger"}`}>{result.ungraded ? "NOT GRADED" : result.pass ? "WITHIN STANDARDS" : "NOT YET"}</span>
       </div>
+      {result.coached && <p className="mt-1 text-xs text-muted">Flown with coach prompts.</p>}
+
+      {result.sequence && (
+        <ol className="mt-3 space-y-1 text-sm">
+          {result.sequence.map((s) => (
+            <li key={s.id} className="flex items-baseline justify-between gap-2 rounded-lg bg-surface-2 px-2 py-1.5">
+              <span>{s.label}{s.critical ? "" : <span className="text-xs text-muted"> (minor)</span>}</span>
+              <span className={`shrink-0 font-mono text-xs tabular ${STEP_CLS[s.status]}`}>
+                {STEP_WORD[s.status]}{s.atSec != null && s.fromSec != null && s.status !== "missed" ? ` · ${(s.atSec - s.fromSec >= 0 ? "+" : "")}${(s.atSec - s.fromSec).toFixed(0)} s` : ""}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+      {frame && result.track && result.track.length > 1 && (
+        <div className="mt-3"><PatternMap frame={frame} track={result.track} compact /></div>
+      )}
 
       {result.params.length > 0 && (
         <ul className="mt-3 space-y-2">
-          {result.params.map((p) => <ParamRow key={p.key} p={p} />)}
+          {result.params.map((p) => <ParamRow key={p.label} p={p} />)}
         </ul>
       )}
 

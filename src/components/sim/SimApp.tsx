@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SimLoop } from "@/sim/loop";
 import { createSimStore, useSimSnapshot } from "@/sim/store";
 import { initialState } from "@/sim/engine";
@@ -11,7 +11,9 @@ import { GamepadSource } from "@/sim/io/gamepad";
 import { TouchSource } from "@/sim/io/touch";
 import { SerialBridge, serialSupported } from "@/sim/io/serial";
 import { ScoreRecorder, type TaskResult } from "@/sim/scoring";
-import { TASKS, taskById, type PracticeTask } from "@/sim/tasks";
+import { TASKS, taskById, type PracticeTask, type TaskContext } from "@/sim/tasks";
+import { runwayFrom } from "@/sim/world";
+import { recordOutcome, reviewId } from "@/lib/review";
 import type { InstrumentReadout } from "@/sim/types";
 import { StallHorn } from "@/lib/audio";
 import { settingsKey } from "@/lib/settings";
@@ -24,6 +26,7 @@ import KeyHelp from "./KeyHelp";
 import TaskPicker from "./TaskPicker";
 import TaskHud from "./TaskHud";
 import Debrief from "./Debrief";
+import PatternMap from "./PatternMap";
 import SerialConnect from "./SerialConnect";
 import Button from "@/components/ui/Button";
 import Icon from "@/components/Icon";
@@ -56,7 +59,10 @@ export default function SimApp() {
   const [touchOverride, setTouchOverride] = useState<boolean | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   const [showSide, setShowSide] = useState(true);
-  const [live, setLive] = useState({ elapsed: 0, hud: "" });
+  const [live, setLive] = useState<{ elapsed: number; hud: string; ctx: TaskContext | null }>({ elapsed: 0, hud: "", ctx: null });
+  const [coach, setCoach] = useState(false);
+  // Runway tasks fly over the training airport's runway from Settings.
+  const frame = useMemo(() => runwayFrom(settings.trainingAirport, undefined, settings.runwayHeading), [settings.trainingAirport, settings.runwayHeading]);
   const showTouch = touchOverride ?? coarse;
 
   const snap = useSimSnapshot(store);
@@ -105,11 +111,11 @@ export default function SimApp() {
     const loop = loopRef.current;
     if (!loop) return;
     endTask();
-    const setup = t.setup();
-    loop.reset({ state: setup.state, inputs: setup.inputs });
+    const setup = t.sequence ? t.setup(frame) : t.setup();
+    loop.reset({ state: setup.state, inputs: setup.inputs }, t.sequence ? { groundElevM: frame.elevM, runway: frame } : undefined);
     loop.setPaused(false);
-    const rec = new ScoreRecorder(t, loop.snapshot());
-    rec.onSample = (ctx) => setLive({ elapsed: ctx.elapsed, hud: t.hud?.(ctx) ?? t.description });
+    const rec = new ScoreRecorder(t, loop.snapshot(), t.sequence ? { runway: frame, coached: coach } : {});
+    rec.onSample = (ctx) => setLive({ elapsed: ctx.elapsed, hud: t.hud?.(ctx) ?? t.description, ctx });
     rec.onDone = (res) => {
       loop.setPaused(true);
       loop.onStep = undefined;
@@ -117,7 +123,11 @@ export default function SimApp() {
       recorder.current = null;
       setResult(res);
       setMode("debrief");
-      setResults((prev) => [res, ...prev].slice(0, MAX_RESULTS));
+      // An ungraded run (pattern not recognised) is shown but neither stored nor scheduled.
+      if (!res.ungraded) {
+        setResults((prev) => [res, ...prev].slice(0, MAX_RESULTS));
+        recordOutcome(reviewId("sim", res.taskId), res.pass ? (res.coached ? "hard" : "good") : "again");
+      }
     };
     recorder.current = rec;
     loop.addSink(rec);
@@ -126,12 +136,12 @@ export default function SimApp() {
     setTask(t);
     setMode("task");
     setResult(null);
-    setLive({ elapsed: 0, hud: t.hud?.(rec.ctx) ?? t.description });
+    setLive({ elapsed: 0, hud: t.hud?.(rec.ctx) ?? t.description, ctx: rec.ctx });
     if (setup.coverInstrumentsSec) {
       setCovered(true);
       setTimeout(() => setCovered(false), setup.coverInstrumentsSec * 1000);
     }
-  }, [endTask, setResults]);
+  }, [endTask, setResults, frame, coach]);
 
   const resetFree = useCallback(() => {
     const loop = loopRef.current;
@@ -175,6 +185,12 @@ export default function SimApp() {
       <div className="flex flex-1 flex-col gap-3 p-3 md:flex-row">
         <main className="flex-1 min-w-0">
           <Panel r={r} inputs={snap.inputs} covered={covered} hobbs={snap.t / 3600} style={hydrated ? settings.panelStyle : "sixpack"} />
+          {task?.sequence && (mode === "task" || mode === "brief") && (
+            <div className="mt-3">
+              <PatternMap frame={frame} track={live.ctx?.track} leg={mode === "task" ? live.ctx?.leg ?? null : undefined}
+                plane={mode === "task" ? { x: snap.state.x, y: snap.state.y, hdgRad: snap.state.hdg, aglFt: r.agl } : undefined} />
+            </div>
+          )}
           {showHelp && <div className="mt-3 rounded-xl border border-border bg-surface p-3"><KeyHelp /></div>}
           {showTouch && hydrated && <div className="mt-3 rounded-xl border border-border bg-surface p-3"><TouchControls source={touch} inputs={snap.inputs} /></div>}
           {paused && mode !== "brief" && mode !== "debrief" && (
@@ -184,7 +200,8 @@ export default function SimApp() {
 
         <aside className={`w-full shrink-0 space-y-3 md:w-80 ${showSide ? "" : "hidden md:block"}`}>
           {mode === "task" && task && entry && (
-            <TaskHud task={task} entry={entry} r={r} elapsed={live.elapsed} hud={live.hud} onEnd={endTask} />
+            <TaskHud task={task} entry={entry} r={r} elapsed={live.elapsed} hud={live.hud} ctx={live.ctx} coach={coach}
+              onCoach={(on) => { setCoach(on); recorder.current?.setCoached(on); }} onEnd={endTask} />
           )}
           {mode === "brief" && task && (
             <div className="rounded-xl border border-accent/40 bg-surface p-3">
@@ -199,7 +216,7 @@ export default function SimApp() {
             </div>
           )}
           {mode === "debrief" && result && task && (
-            <Debrief result={result} onRetry={() => startTask(task)} onClose={resetFree} />
+            <Debrief result={result} frame={task.sequence ? frame : undefined} onRetry={() => startTask(task)} onClose={resetFree} />
           )}
           <div className="rounded-xl border border-border bg-surface">
             <p className="px-3 pt-2 text-xs font-semibold uppercase tracking-wide text-muted">Practice tasks</p>
